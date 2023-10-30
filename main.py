@@ -1,7 +1,7 @@
 import gym
 import time 
 
-env = gym.make('operation_simulation:Operation-v0', grid_shape=(30, 30), n_agents=10)
+env = gym.make('operation_simulation:SafePath-v0', grid_shape=(30, 30), n_agents=10)
 done_n = [False for _ in range(env.n_agents)]
 ep_reward = 0
 

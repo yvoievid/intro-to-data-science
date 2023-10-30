@@ -53,8 +53,8 @@ register(
     entry_point='operation_simulation.envs.combat:Combat',
 )
 register(
-    id='Battle-v0',
-    entry_point='operation_simulation.envs.battle:Battle',
+    id='SafePath-v0',
+    entry_point='operation_simulation.envs.safe_path:SafePath',
 )
 register(
     id='PongDuel-v0',
