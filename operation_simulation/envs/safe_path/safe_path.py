@@ -159,7 +159,7 @@ class SafePath(gym.Env):
         self._agent_dones = [False for _ in range(self.n_agents)]
         self._prey_alive = [True for _ in range(self.n_preys)]
         self._agent_location = self.np_random.randint(0, self._grid_shape[0], size=2, dtype=int)
-        self._target_location = self._agent_location
+        self._target_location = self.np_random.randint(0, self._grid_shape[0], size=2, dtype=int)
 
         self._distance_to_target_start = self._get_info()["distance"]
 
@@ -175,7 +175,7 @@ class SafePath(gym.Env):
         info = self._get_info()
 
         print(" self._target_location", self._target_location)
-        self.prey_pos[0] = [self._target_location[0] + 1 , self._target_location[1]]
+        # self.prey_pos[0] = [self._target_location[0] + 1 , self._target_location[1]]
 
         print("self.prey_pos ---- ", self.prey_pos)
 
@@ -306,10 +306,14 @@ class SafePath(gym.Env):
             if self._prey_alive[prey_i]:
                 predator_neighbour_count, n_i = self._neighbour_agents(self.prey_pos[prey_i])
                 
-                additional_reward = 1 if np.linalg.norm(self._prey_alive[prey_i] - self._target_location, ord=1) < self._distance_to_target_start else 0
+                print('new location', np.linalg.norm(self.prey_pos[prey_i] - self._target_location, ord=1))
+                print('prey location', self.prey_pos[prey_i])
+                additional_reward = 1 if np.linalg.norm(self.prey_pos[prey_i] - self._target_location, ord=1) < self._distance_to_target_start else 0
+                additional_reward += 100 if self.prey_pos[prey_i][0] == self._target_location[0] and self.prey_pos[prey_i][1] == self._target_location[1] else 0
                 self._distance_to_target_start = self._get_info()["distance"]
-                print('self._distance_to_target_start', additional_reward)
-                
+                print('additional_reward', additional_reward)
+                print('self._distance_to_target_start', self._distance_to_target_start)
+
                 if predator_neighbour_count >= 1:
                     _reward = self._penalty if predator_neighbour_count == 1 else self._prey_capture_reward
 
