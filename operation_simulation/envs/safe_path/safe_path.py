@@ -12,6 +12,7 @@ import cv2
 from ..utils.action_space import MultiAgentActionSpace
 from ..utils.draw import draw_grid, fill_cell, draw_circle, write_cell_text
 from ..utils.observation_space import MultiAgentObservationSpace
+from .units.soldier import Soldier
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ class SafePath(gym.Env):
         self._step_cost = step_cost
         self._prey_capture_reward = prey_capture_reward
         self._agent_view_mask = agent_view_mask
-
+        self.new_agent = Soldier()
         self.action_space = MultiAgentActionSpace([spaces.Discrete(5) for _ in range(self.n_agents)])
         self.agent_pos = {_: None for _ in range(self.n_agents)}
         self.prey_pos = {_: None for _ in range(self.n_preys)}
