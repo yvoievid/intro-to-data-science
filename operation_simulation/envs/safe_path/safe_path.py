@@ -60,10 +60,12 @@ class SafePath(gym.Env):
         self._step_cost = step_cost
         self._prey_capture_reward = prey_capture_reward
         self._agent_view_mask = agent_view_mask
-        self.new_agent = Soldier()
         self.action_space = MultiAgentActionSpace([spaces.Discrete(5) for _ in range(self.n_agents)])
         self.agent_pos = {_: None for _ in range(self.n_agents)}
         self.prey_pos = {_: None for _ in range(self.n_preys)}
+        
+        print('')
+        self._soldier_agent = Soldier([1,1],"Brayan", 2, 1)
         self._prey_alive = None
 
         self._base_grid = self.__create_grid()  # with no agents
@@ -175,12 +177,12 @@ class SafePath(gym.Env):
         observation = self._get_obs()
         info = self._get_info()
         
-        print(" self._target_location", type(self._target_location))
-        print(" self._grid_shape", self._grid_shape)
+        # print(" self._target_location", type(self._target_location))
+        # print(" self._grid_shape", self._grid_shape)
 
         # self.prey_pos[0] = [self._target_location[0] + 1 , self._target_location[1]]
 
-        print("self.prey_pos ---- ", self.prey_pos)
+        # print("self.prey_pos ---- ", self.prey_pos)
 
         return self.get_agent_obs()
 
@@ -239,18 +241,18 @@ class SafePath(gym.Env):
             next_pos = curr_pos
         return next_pos
 
-    def __update_prey_pos(self, prey_i, move):
+    def __update_prey_pos(self, prey_i, move, speed = 1):
         curr_pos = copy.copy(self.prey_pos[prey_i])
         if self._prey_alive[prey_i]:
             next_pos = None
             if move == 0:  # down
-                next_pos = [curr_pos[0] + 1, curr_pos[1]]
+                next_pos = [curr_pos[0] + speed, curr_pos[1]]
             elif move == 1:  # left
-                next_pos = [curr_pos[0], curr_pos[1] - 1]
+                next_pos = [curr_pos[0], curr_pos[1] - speed]
             elif move == 2:  # up
-                next_pos = [curr_pos[0] - 1, curr_pos[1]]
+                next_pos = [curr_pos[0] - speed, curr_pos[1]]
             elif move == 3:  # right
-                next_pos = [curr_pos[0], curr_pos[1] + 1]
+                next_pos = [curr_pos[0], curr_pos[1] + speed]
             elif move == 4:  # no-op
                 pass
             else:
@@ -334,7 +336,7 @@ class SafePath(gym.Env):
                             prey_move = _move
                             break
                     prey_move = 4 if prey_move is None else prey_move  # default is no-op(4)
-                self.__update_prey_pos(prey_i, prey_move)
+                self.__update_prey_pos(prey_i, prey_move, self._soldier_agent.step)
 
         if (self._step_count >= self._max_steps) or (True not in self._prey_alive):
             for i in range(self.n_agents):
@@ -418,6 +420,7 @@ class SafePath(gym.Env):
         # Now we draw the agent
         draw_circle(img, self._agent_location, cell_size=CELL_SIZE, fill=SPY_COLOR)
 
+        #resize image to not have it just 256x256 but BIGGER!
         img = np.asarray(img)
         img = cv2.resize(img,(0,0), fx=1.5, fy=1.5)
 
