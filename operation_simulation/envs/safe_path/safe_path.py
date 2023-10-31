@@ -59,7 +59,6 @@ class SafePath(gym.Env):
         self._step_cost = step_cost
         self._prey_capture_reward = prey_capture_reward
         self._agent_view_mask = agent_view_mask
-        # self.window_size = 1024
 
         self.action_space = MultiAgentActionSpace([spaces.Discrete(5) for _ in range(self.n_agents)])
         self.agent_pos = {_: None for _ in range(self.n_agents)}
@@ -117,8 +116,8 @@ class SafePath(gym.Env):
 
         for prey_i in range(self.n_preys):
             while True:
-                pos = [self.np_random.randint(0, self._grid_shape[0] - 1),
-                       self.np_random.randint(0, self._grid_shape[1] - 1)]
+                pos = [self.np_random.randint(self._grid_shape[0] - PREY_LOCATION_OFFSET, self._grid_shape[0] - 1),
+                       self.np_random.randint(0, PREY_LOCATION_OFFSET)]
                 if self._is_cell_vacant(pos) and (self._neighbour_agents(pos)[0] == 0):
                     self.prey_pos[prey_i] = pos
                     break
@@ -131,7 +130,7 @@ class SafePath(gym.Env):
         for agent_i in range(self.n_agents):
             pos = self.agent_pos[agent_i]
             _agent_i_obs = [pos[0] / (self._grid_shape[0] - 1), pos[1] / (self._grid_shape[1] - 1)]  # coordinates
-
+            
             # check if prey is in the view area
             _prey_pos = np.zeros(self._agent_view_mask)  # prey location in neighbour
             for row in range(max(0, pos[0] - 2), min(pos[0] + 2 + 1, self._grid_shape[0])):
@@ -159,22 +158,25 @@ class SafePath(gym.Env):
         self._agent_dones = [False for _ in range(self.n_agents)]
         self._prey_alive = [True for _ in range(self.n_preys)]
         self._agent_location = self.np_random.randint(0, self._grid_shape[0], size=2, dtype=int)
-        self._target_location = self.np_random.randint(0, self._grid_shape[0], size=2, dtype=int)
+        self._target_location = np.array([self.np_random.randint(0, TARGET_LOCATION_OFFSET), self.np_random.randint(self._grid_shape[0] - TARGET_LOCATION_OFFSET, self._grid_shape[0])])
 
+        # self._target_location = self.generate_target_location()
         self._distance_to_target_start = self._get_info()["distance"]
 
         # Choose the agent's location uniformly at random
 
         # We will sample the target's location randomly until it does not coincide with the agent's location
-        while np.array_equal(self._target_location, self._agent_location):
-            self._target_location = self.np_random.randint(
-                0, self._grid_shape[0], size=2, dtype=int
-            )
+        # while np.array_equal(self._target_location, self._agent_location):
+        #     self._target_location = self.np_random.randint(
+        #         0, self._grid_shape[0], size=2, dtype=int
+        #     )
             
         observation = self._get_obs()
         info = self._get_info()
+        
+        print(" self._target_location", type(self._target_location))
+        print(" self._grid_shape", self._grid_shape)
 
-        print(" self._target_location", self._target_location)
         # self.prey_pos[0] = [self._target_location[0] + 1 , self._target_location[1]]
 
         print("self.prey_pos ---- ", self.prey_pos)
@@ -306,13 +308,13 @@ class SafePath(gym.Env):
             if self._prey_alive[prey_i]:
                 predator_neighbour_count, n_i = self._neighbour_agents(self.prey_pos[prey_i])
                 
-                print('new location', np.linalg.norm(self.prey_pos[prey_i] - self._target_location, ord=1))
-                print('prey location', self.prey_pos[prey_i])
+                # print('new location', np.linalg.norm(self.prey_pos[prey_i] - self._target_location, ord=1))
+                # print('prey location', self.prey_pos[prey_i])
                 additional_reward = 1 if np.linalg.norm(self.prey_pos[prey_i] - self._target_location, ord=1) < self._distance_to_target_start else 0
                 additional_reward += 100 if self.prey_pos[prey_i][0] == self._target_location[0] and self.prey_pos[prey_i][1] == self._target_location[1] else 0
                 self._distance_to_target_start = self._get_info()["distance"]
-                print('additional_reward', additional_reward)
-                print('self._distance_to_target_start', self._distance_to_target_start)
+                # print('additional_reward', additional_reward)
+                # print('self._distance_to_target_start', self._distance_to_target_start)
 
                 if predator_neighbour_count >= 1:
                     _reward = self._penalty if predator_neighbour_count == 1 else self._prey_capture_reward
@@ -437,13 +439,15 @@ class SafePath(gym.Env):
             self.viewer.close()
             self.viewer = None
 
-
 AGENT_COLOR = ImageColor.getcolor('blue', mode='RGB')
 AGENT_NEIGHBORHOOD_COLOR = (186, 238, 247)
 PREY_COLOR = 'red'
 SPY_COLOR = 'green'
 
 CELL_SIZE = 35
+TARGET_LOCATION_OFFSET = 5
+PREY_LOCATION_OFFSET = 5
+
 
 WALL_COLOR = 'black'
 
