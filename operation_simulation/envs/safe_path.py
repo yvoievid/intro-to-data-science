@@ -176,6 +176,15 @@ class SafePath(gym.Env):
                 pix_square_size / 3,
             )
             
+        # Draw the area of predators' attack
+        for predator in self._predators.values():
+            for neighbour in self.__get_neighbour_coordinates(predator.position):
+                pygame.draw.rect(
+                    canvas,
+                    (255, 211, 0),
+                    pygame.Rect(neighbour[0]*pix_square_size, neighbour[1]*pix_square_size, pix_square_size, pix_square_size)
+                )
+                
         # Finally, add some gridlines
         for x in range(self.grid_size + 1):
             pygame.draw.line(
@@ -213,5 +222,22 @@ class SafePath(gym.Env):
             pygame.quit()
 
 
+    def __get_neighbour_coordinates(self, pos):
+        neighbours = []
+        if self.is_valid([pos[0] + 1, pos[1]]):
+            neighbours.append([pos[0] + 1, pos[1]])
+        if self.is_valid([pos[0] - 1, pos[1]]):
+            neighbours.append([pos[0] - 1, pos[1]])
+        if self.is_valid([pos[0], pos[1] + 1]):
+            neighbours.append([pos[0], pos[1] + 1])
+        if self.is_valid([pos[0], pos[1] - 1]):
+            neighbours.append([pos[0], pos[1] - 1])
+        return neighbours
+
+
+    def is_valid(self, pos):
+        return (0 <= pos[0] < self.grid_size) and (0 <= pos[1] < self.grid_size)
+    
+    
 # Some constants... you know... to make life easier
 PREDATOR_OBJECT = 1
