@@ -120,7 +120,6 @@ class SafePath(gym.Env):
         
         
         # # Predators should move by specific algotight knows by commandors, perfectrly discribed by functions
-        # self._
         
         # An episode is done iff the agent has reached the target
         terminated = np.array_equal(self._agent_location, self._target_location)
