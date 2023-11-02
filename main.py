@@ -1,15 +1,21 @@
-import gym
-import time 
+import random
+import time
+import gymnasium as gym
+# import gym_examples
+from operation_simulation.wrappers import RelativePosition
 
-env = gym.make('operation_simulation:SafePath-v0', grid_shape=(30, 30), n_agents=10)
-done_n = [False for _ in range(env.n_agents)]
-ep_reward = 0
+random.seed(1)
+env = gym.make('operation_simulation/SafePath-v0', render_mode = "human", grid_size=40, window_size=1024)
+wrapped_env = RelativePosition(env)
+done_n = [False for _ in range(100)]
 
-obs_n = env.reset()
+obs_n = wrapped_env.reset()
 while not all(done_n):
-    env.render()
+    print(env.render())
     time.sleep(0.2)
-    obs_n, reward_n, done_n, info = env.step(env.action_space.sample())
-    ep_reward += sum(reward_n)
+    # print("wrapped_env.action_space.sample()",wrapped_env.action_space.sample())
+    
+    observation, reward, terminated, _, info = env.step(wrapped_env.action_space.sample())
+    print(observation, reward, terminated, _, info)
     
 env.close()
