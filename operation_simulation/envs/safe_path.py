@@ -19,12 +19,11 @@ class SafePath(gym.Env):
         self.window_size = window_size  # The size of the PyGame window
         self._n_predators = n_predators
         self._n_agents = n_agents
-        # self.action_space = MultiAgentActionSpace([spaces.Discrete(5) for _ in range(self.n_predators)])
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(
             {
-                "agent": spaces.Box(0, grid_size - 1, shape=(2,), dtype=int),
+                "agent": spaces.Discrete(grid_size * grid_size),
                 "target": spaces.Box(0, grid_size - 1, shape=(2,), dtype=int),
                 "predators": spaces.Tuple((spaces.Box(0, grid_size - 1,  shape=(2,), dtype=int) for _ in range(self._n_predators)))
             }
