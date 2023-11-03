@@ -12,7 +12,7 @@ from ..models.soldier import Soldier
 
 
 class SafePath(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 120}
 
     def __init__(self, render_mode=None, grid_size=5, window_size=512, n_predators=2, n_agents=1):
         self.grid_size = grid_size  # The size of the square grid
@@ -29,7 +29,7 @@ class SafePath(gym.Env):
             }
         )
 
-        # We have 4 actions, corresponding to "right", "up", "left", "down" for each predator
+        # We have 4 actions, corresponding to "right", "up", "left", "down" for each predator and agent
 
         # Adding 1 to take into account the main agent
         self.action_space = MultiAgentActionSpace([spaces.Discrete(4) for _ in range(self._n_predators + self._n_agents) ])
@@ -37,6 +37,17 @@ class SafePath(gym.Env):
         # List of predators that will be chasing the agent
         # position, name, step, size
         self._predators = {_: None for _ in range(self._n_predators)}
+
+        # Choose the agent's location uniformly at random
+        self._agent_location = self.np_random.integers(0, self.grid_size, size=2, dtype=int)
+
+        # We will sample the target's location randomly until it does not coincide with the agent's location
+        self._target_location = self._agent_location
+        
+        while np.array_equal(self._target_location, self._agent_location):
+            self._target_location = self.np_random.integers(
+                0, self.grid_size, size=2, dtype=int
+            )
 
         """
         The following dictionary maps abstract actions from `self.action_space` to 
@@ -72,25 +83,21 @@ class SafePath(gym.Env):
                 self._agent_location - self._target_location, ord=1
             )
         }
+        
+    def set_init_obervations(self, init_obervations):
+        self._agent_location = init_obervations["agent"]
+        self._target_location = init_obervations["target"]
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
-
-        # Choose the agent's location uniformly at random
-        self._agent_location = self.np_random.integers(0, self.grid_size, size=2, dtype=int)
-        
         
         # By default all predators will be soldiers, but can be changed in future
         self._predators = {_: Soldier(position=self.np_random.integers(0, self.grid_size, size=2, dtype=int), name="predator_" + str(_) ) for _ in range(self._n_predators)}
         
-        # We will sample the target's location randomly until it does not coincide with the agent's location
-        self._target_location = self._agent_location
-        while np.array_equal(self._target_location, self._agent_location):
-            self._target_location = self.np_random.integers(
-                0, self.grid_size, size=2, dtype=int
-            )
-
+        # Calculate how far we are from our target
+        self._distance_to_target_start = np.linalg.norm(self._agent_location - self._target_location, ord=1)
+        
         observation = self._get_obs()
         info = self._get_info()
 
@@ -120,10 +127,17 @@ class SafePath(gym.Env):
         
         # # Predators should move by specific algotight knows by commandors, perfectrly discribed by functions
         
-        # An episode is done iff the agent has reached the target
+        # An episode is done iff the agent has reached the target OR it took to long
         terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else 0  # Binary sparse rewards
+        
+        # We add a reward if we are getting closer to the target
+
+        reward = 1 if np.linalg.norm(self._agent_location - self._target_location, ord=1) < self._distance_to_target_start else 0  # Binary sparse rewards
         observation = self._get_obs()
+        
+        print("np.linalg.norm(self._agent_location - self._target_location, ord=1)", np.linalg.norm(self._agent_location - self._target_location, ord=1))
+        print("self._distance_to_target_start", self._distance_to_target_start)
+        
         info = self._get_info()
 
         if self.render_mode == "human":
@@ -236,6 +250,7 @@ class SafePath(gym.Env):
 
     def is_valid(self, pos):
         return (0 <= pos[0] < self.grid_size) and (0 <= pos[1] < self.grid_size)
+    
     
     
 # Some constants... you know... to make life easier
