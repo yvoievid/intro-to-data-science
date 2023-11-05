@@ -27,5 +27,8 @@ class Unit(ABC):
     @property
     def name(self):
         return self._name
+    
+    def draw(self):
+        pass
 
 

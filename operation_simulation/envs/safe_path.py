@@ -12,13 +12,16 @@ from ..models.soldier import Soldier
 
 
 class SafePath(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 120}
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 20}
 
-    def __init__(self, render_mode=None, grid_size=5, window_size=512, n_predators=2, n_agents=1):
+    def __init__(self, render_mode=None, grid_size=5, window_size=512, n_predators=2, n_agents=1, allied_units=[], enemy_units=[]):
         self.grid_size = grid_size  # The size of the square grid
         self.window_size = window_size  # The size of the PyGame window
         self._n_predators = n_predators
         self._n_agents = n_agents
+        self.allied_units = allied_units 
+        self.enemy_units = enemy_units
+        
         # Observations are dictionaries with the agent's and the target's location.
         # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(
@@ -180,6 +183,15 @@ class SafePath(gym.Env):
             pix_square_size / 3,
         )
 
+        # Draw alliance
+        for ally in self.allied_units:
+            ally.draw(canvas, pix_square_size)
+        
+        # Draw enemy units
+        for enemy in self.enemy_units:
+            enemy.draw(canvas, pix_square_size)
+    
+    
         # Draw predators!
         for predator in self._predators.values():
             pygame.draw.circle(
