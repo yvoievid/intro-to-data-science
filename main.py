@@ -2,72 +2,126 @@ import random
 import time
 import gymnasium as gym
 import numpy as np
+import pygame
 from operation_simulation.wrappers import RelativePosition
-from operation_simulation.models import Soldier, Locator, Uav
+from operation_simulation.models import Soldier, Locator, Tank, UnitGroup
+import sys
 
-random.seed(1)
-
-
-
-# up, down, left, right
-#
-# For plotting metrics
+# hyperparameters
 all_epochs = []
 all_penalties = []
+epsilon = 0.3
+alpha = 0.05
+gamma = 0.99
+t90 = Tank(name="Bullet 1", size=1)
+abrams = Tank(name="Bullet 2", size=1)
+grid_size = 32
+main_group_index = 0
+window_size = 1024
+training_fps = 50000
+simulation_fps = 5
+training_epocs = 100
+simulation_epochs = 5
+
+# actors
+alliance = [UnitGroup(position=np.array([5, 20]), speed=1, units=[t90, abrams],name="alfa"),
+            UnitGroup(position=np.array([8, 25]), speed=1, units=[t90, abrams],name="omega"),
+            UnitGroup(position=np.array([10, 29]), speed=1, units=[t90, abrams],name="delta")]
 
 
-target_position = np.array([35, 5])
-agent_position = np.array([5, 35])
+enemy_locator = Locator(name="Enemy Locator", speed=0, size=1)
+enemy_tank = Tank(name="T92", speed=1.5, size=1)
+bm_21 = Tank(name="BM21", speed=0, size=3, cover_area=100)
 
-private_rayan = Uav(agent_position, name="Bullet 1", step=1, size=1)
-enemy_locator = Locator(target_position, name="Enemy Locator", step=0, size=1)
 
-alliance = [private_rayan]
-enemies = [enemy_locator]
+enemy_commander = Soldier(name="Prigozhin", size=1)
 
-env = gym.make('operation_simulation/SafePath-v0', render_mode = "human", grid_size=40, window_size=1024, allied_units = alliance, enemy_units = enemies)
+enemies = [UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
+           UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Assault group 1", speed=2),
+           UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Assault group 2", speed=1),
+           UnitGroup(position=np.array([28, 28]), units=[bm_21], name="Defence group 1", speed=0), 
+           UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0), ]
 
-q_table = np.zeros([env.observation_space["agent"].n, env.action_space.action_spaces[-1].n])
 
-alpha = 0.1
-gamma = 0.6
-epsilon = 0.1
+target_group = UnitGroup(position=np.array([24, 5]), units=[enemy_commander], name="Prigozhin")
 
-print("q_table_row", q_table.shape)
-for i in range(1, 100):
-    env.set_init_obervations({"agent": private_rayan.position, "target": target_position})
+pygame.init()
+pygame.display.init()
 
-    initial_state, info = env.reset()
-    agent_state = initial_state["agent"][0] * initial_state["agent"][1]
+window = pygame.display.set_mode((window_size, window_size))
+
+# create gym env 
+env = gym.make('operation_simulation/SafePath-v0',window=window, fps=simulation_fps, render_mode = "human", size=grid_size, window_size=window_size, allies = alliance, enemies = enemies, target=target_group, main_unit_group_index=main_group_index, weather="winter")
+
+# decide the main assault group
+main_unit_group = alliance[main_group_index]
+main_unit_group.q_table = np.zeros((env.observation_space["main_group"].n, env.action_space.n))
+
+while True:
+    pygame.init()
+    battleground_observations, info = env.reset()
     
-    epochs, penalties, reward, = 0, 0, 0
-    terminated = False
-
-    while not terminated:
-        if random.uniform(0, 1) < epsilon:
-            action = env.action_space.sample() # Explore action space
-        else:
-            action = np.argmax(q_table[agent_state]) # Exploit learned values
-
-        next_state, reward, terminated, _, info = env.step(env.action_space.sample())
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+         
+        # checking if keydown event happened or not
+        if event.type == pygame.KEYDOWN:
         
-        old_value = q_table[agent_state, action]
-        next_max = np.max(q_table[agent_state])
+            iterations = 0
+            if event.key == pygame.K_SPACE:
+                inference = {
+                    'strategy':"ATTACK",
+                    'flang': "LEFT"
+                }
+                
+                env.set_fps(training_fps)
+                iterations = training_epocs
+                
+            if event.key == pygame.K_TAB:
+                env.set_fps(simulation_fps)
+                iterations = simulation_epochs
 
-        new_value = (1 - alpha) * old_value + alpha * (reward + gamma * next_max)
-        q_table[agent_state, action] = new_value
+            if event.key == pygame.K_ESCAPE:
+                env.close()
 
-        if reward == 0:
-            penalties += 1
+            for i in range(1, iterations):
+                battleground_observations, info = env.reset()
+                main_unit_group = battleground_observations["main_group"]
+                
+                main_unit_group.state = main_unit_group.calculate_state()
+                env.set_inference(inference)
+                
+                epochs, penalties, reward, = 0, 0, 0
+                terminated = False
 
-        state = next_state
-        epochs += 1
-        
-        print("PENALTIES", penalties)
-        if penalties == 10:
-            terminated = True
-            
-        
-env.close()
+                while not terminated:
+                    if random.uniform(0, 1) < epsilon:
+                        action = env.action_space.sample()
+                    else:
+                        action = np.argmax(main_unit_group.q_table[main_unit_group.state])
 
-print(q_table[3*35])
+                    next_groups_observation, reward, terminated, _, info = env.step(action)
+                    
+                    next_state = next_groups_observation["main_group"].calculate_state()
+
+                    old_value = main_unit_group.q_table[main_unit_group.state, action]
+                    next_max = np.max(main_unit_group.q_table[next_state])
+
+                    new_value = (1 - alpha) * old_value + alpha * (reward + gamma * next_max)
+
+
+                    main_unit_group.q_table[main_unit_group.state, action] = new_value
+                    
+                    if reward == 0: 
+                        penalties += 1
+
+                    print("reward", reward)
+                    
+                    main_unit_group.state = next_state
+                    epochs += 1
+                    
+                    if penalties == 10:
+                        terminated = True
+                        

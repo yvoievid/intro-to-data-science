@@ -1,33 +1,21 @@
-from abc import ABC, abstractmethod
+from gymnasium import spaces
+from dataclasses import dataclass,field
+from typing import List
 
-class Unit(ABC):
-    def __init__(self, position, name, step, size):
-        self._position = position
-        self._name = name
-        self._step = step
-        self._size = size
-        self._type = None
-    
-    @property
-    def step(self):
-        return self._step
-    
-    @property
-    def position(self):
-        return self._position
-    
-    @position.setter
-    def position(self, value):
-        self._position = value
-        
-    @property
-    def size(self):
-        return self._size
-    
-    @property
-    def name(self):
-        return self._name
-    
+@dataclass
+class Unit:
+    name: str = ""
+    size: int = 1
+    is_alive: bool = True
+    speed: int = 1
+    # alpha: float = 0.1
+    # gamma: float = 0.6
+    # epsilon: float = 0.1
+    # lr: float = 0.1
+    # agent specific parameters
+    # up, down, left, right
+    action_space: spaces.Space = spaces.Discrete(4)
+
     def draw(self):
         pass
 

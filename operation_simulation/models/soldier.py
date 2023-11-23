@@ -1,9 +1,7 @@
 from .unit import Unit
+from dataclasses import dataclass
 
+@dataclass
 class Soldier(Unit):
-    def __init__(self, position, name="Recrut",  step=1, size=1):
-        super().__init__(position, name, step, size)
-    
-    @staticmethod
-    def get_soldier_step():
-        return 1
+    ammo: int = 30
+    cover_area: int = 1
