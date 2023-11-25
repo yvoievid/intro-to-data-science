@@ -19,7 +19,7 @@ training_fps = 50000000
 simulation_fps = 60
 training_epocs = 1000
 simulation_epochs = 5
-
+weather = "Winter"
 
 # windos settinds
 window_size = 1024
@@ -53,13 +53,35 @@ pygame.init()
 pygame.display.init()
 
 
-# display
-window = pygame.display.set_mode((window_size, menu_height +  window_size))
+# creating interface
+button_size = (200, 50)
+train_button_position = (1, 1)
+test_button_position = (220, 1)
+weather_condition_position = (420, 1)
+train_text = "Train"
 
+font = pygame.font.SysFont('Comic Sans MS', 30)
+
+window = pygame.display.set_mode((window_size, menu_height + window_size))
             
 header_menu = pygame.Surface((window_size, 50))
 header_menu.fill((255, 255, 255))
-window.blit(header_menu, (0,0))
+window.blit(header_menu, header_menu.get_rect())
+
+train_text = font.render(train_text, True, (0, 0, 0))
+pygame.draw.rect(window, (122, 122, 122),pygame.Rect(
+                    train_button_position,
+                    button_size)) 
+window.blit(train_text, train_button_position)
+
+test_text = font.render("Test", True, (0, 0, 0))
+pygame.draw.rect(window, (0, 122, 122),pygame.Rect(
+                    test_button_position,
+                    button_size)) 
+window.blit(test_text, test_button_position)
+
+weather_label = font.render("Weather:", True, (0, 0, 0))
+window.blit(weather_label, weather_condition_position)
 
 
 # create gym env
@@ -118,8 +140,7 @@ def q_learning_simulation(env, inference, hyperparams):
             
             if reward <= 0:
                 penalties += 1
-            
-            print("epoch:", i)          
+
             main_unit_group.state = next_state
             epochs += 1
             
@@ -127,7 +148,6 @@ def q_learning_simulation(env, inference, hyperparams):
                 terminated = True
 
 while True:
-    pygame.init()
     battleground_observations, info = env.reset()
     
     for event in pygame.event.get():
@@ -141,7 +161,7 @@ while True:
             if event.key == pygame.K_SPACE:
                 inference = {
                     'strategy':"ATTACK",
-                    'flang': "RIGHT"
+                    'flang': "RIGHT",
                 }
                 
                 env.set_fps(training_fps)

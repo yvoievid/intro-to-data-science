@@ -151,13 +151,12 @@ class SafePath(gym.Env):
         terminated = np.array_equal(self._main_unit_group.position, self._target.position ) 
         
         reward = 0
-        
+        inference_reward = 0
         # We add a reward if we are getting closer to the target
         reward = 1 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else -2  # Binary sparse rewards
         
         # Inference reward calculation
         if self._inference['flang'] == "LEFT":
-            # inference_reward = 2 if np.linalg.norm(self._main_unit_group.position - self._left_flang_position , ord=1) < self._distance_to_left_flang else -1  # Binary sparse rewards
             inference_reward = 1 if (self._main_unit_group.position[1] - self._left_flang_position[1]) < self._distance_to_flang else -2
        
         elif self._inference['flang'] == "RIGHT":
@@ -236,7 +235,6 @@ class SafePath(gym.Env):
                 ),
             )
         self.draw_title(canvas, font, pix_square_size, self._target.position, self._target.name)
-           
 
         for x in range(self.grid_size + 1):
             pygame.draw.line(
@@ -253,10 +251,9 @@ class SafePath(gym.Env):
                 (pix_square_size * x, self.window_size),
                 width=1,
             )
-            
 
         if self.render_mode == "human":
-            self.window.blit(canvas, canvas.get_rect())
+            self.window.blit(canvas,(0, 50))
             pygame.event.pump()
             pygame.display.update()
             self.clock.tick(self.metadata["render_fps"])
