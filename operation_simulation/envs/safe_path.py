@@ -12,7 +12,7 @@ from ..models.soldier import Soldier
 
 
 class SafePath(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 5}
+    metadata = {"render_modes": ["human", "rgb_array", "train"], "render_fps": 5}
 
     def __init__(self, window=None, fps=5, render_mode="human", size=5, window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather="winter", attack_or_defend="attack", flang="upper"):
         self.grid_size = size  # The size of the square grid
@@ -65,6 +65,11 @@ class SafePath(gym.Env):
         if weather == "winter":
             self._step_cost = -0.1
             
+        # Flangs
+        self._left_flang_position = np.array([5, self._target.position[1]])
+        self._right_flang_position = np.array([self._target.position[0], self.grid_size - 5])
+
+        print("self._right_flang_position",self._right_flang_position)
         self.metadata["render_fps"] = fps
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -99,9 +104,8 @@ class SafePath(gym.Env):
 
     def reset(self, seed=None, main_unit_index=0, options=None):
         # We need the following line to seed self.np_random
-        super().reset(seed=seed)    
+        super().reset(seed=seed)
         
-
         self._main_unit_group.position = self._main_unit_group_initial_position
         
         for enemy in self._enemies:
@@ -126,8 +130,12 @@ class SafePath(gym.Env):
         
         # Calculate distance 
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
-
         
+        if self._inference['flang'] == "LEFT":
+            self._distance_to_flang = self._main_unit_group.position[1] - self._left_flang_position[1]
+        elif self._inference['flang'] == "RIGHT":
+            self._distance_to_flang = abs(self._main_unit_group.position[0] - self._right_flang_position[0])
+
         # Move the main group 
         self._main_unit_group.position = np.clip(
             self._main_unit_group.position + main_agent_direction, 0, self.grid_size - 1
@@ -139,21 +147,22 @@ class SafePath(gym.Env):
             enemy_group.position + self._action_to_direction[self.action_space.sample()] * enemy_group.speed, 0, self.grid_size - 1
         )
         
-        
         # An episode is done iff the agent has reached the target OR it took to long OR main unit group is eliminated
         terminated = np.array_equal(self._main_unit_group.position, self._target.position ) 
         
+        reward = 0
         
         # We add a reward if we are getting closer to the target
-        reward = 1 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else 0  # Binary sparse rewards
-    
+        reward = 1 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else -2  # Binary sparse rewards
+        
         # Inference reward calculation
-        inference_reward = 0
         if self._inference['flang'] == "LEFT":
-            self._left_flang_position = [5,5]
-            inference_reward = 1 if np.linalg.norm(self._main_unit_group.position - self._left_flang_position , ord=1) < self._distance_to_target_start else 0  # Binary sparse rewards
+            # inference_reward = 2 if np.linalg.norm(self._main_unit_group.position - self._left_flang_position , ord=1) < self._distance_to_left_flang else -1  # Binary sparse rewards
+            inference_reward = 1 if (self._main_unit_group.position[1] - self._left_flang_position[1]) < self._distance_to_flang else -2
+       
+        elif self._inference['flang'] == "RIGHT":
+            inference_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flang_position[0]) < self._distance_to_flang else -3
 
-               
         reward += inference_reward
     
         observation = self._get_obs()
@@ -161,7 +170,7 @@ class SafePath(gym.Env):
 
         if self.render_mode == "human":
             self._render_frame()
-
+        
         return observation, reward, terminated, False, info
 
     def render(self):
@@ -217,7 +226,6 @@ class SafePath(gym.Env):
         
             self.draw_title(canvas, font, pix_square_size, ally.position, ally.name)
 
-
         # Draw the target
         pygame.draw.rect(
                 canvas,
@@ -227,7 +235,8 @@ class SafePath(gym.Env):
                     (pix_square_size, pix_square_size),
                 ),
             )
-        self.draw_title(canvas, font, pix_square_size,  self._target.position, self._target.name)
+        self.draw_title(canvas, font, pix_square_size, self._target.position, self._target.name)
+           
 
         for x in range(self.grid_size + 1):
             pygame.draw.line(
@@ -244,7 +253,6 @@ class SafePath(gym.Env):
                 (pix_square_size * x, self.window_size),
                 width=1,
             )
-            
             
 
         if self.render_mode == "human":
@@ -285,6 +293,9 @@ class SafePath(gym.Env):
     
     def set_fps(self, fps):
         self.metadata["render_fps"] = fps
+    
+    def set_render_mode(self, render_mode):
+        self.render_mode = render_mode
     
     def set_inference(self, inference):
         self._inference = inference
