@@ -5,19 +5,16 @@ from gymnasium import spaces
 import pygame
 import numpy as np
 
-from ..utils.observation_space import MultiAgentObservationSpace
-from ..utils.action_space import MultiAgentActionSpace
-from ..models.unit import Unit
-from ..models.soldier import Soldier
-
 
 class SafePath(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array", "train"], "render_fps": 5}
 
-    def __init__(self, window=None, fps=5, render_mode="human", size=5, window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather="winter", attack_or_defend="attack", flang="upper"):
-        self.grid_size = size  # The size of the square grid
-        self.window_size = window_size  # The size of the PyGame window
-     
+    def __init__(self, window=None, background=None, fps=5, render_mode="human", size=5, window_size=512, allies=None, enemies=None, 
+                 target=None, main_unit_group_index=0, weather="winter"):
+        self.grid_size = size
+        self.window_size = window_size  
+        self.background =  pygame.transform.scale(background, (window_size, window_size))
+
         self._allies = allies 
         self._enemies = enemies
         
@@ -31,8 +28,6 @@ class SafePath(gym.Env):
         self._main_unit_group = self._allies[main_unit_group_index]
         self._target = target
 
-        # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(
             {
                 "enemies":  spaces.Dict({enemy.name: spaces.Box(0, size - 1, shape=(2,), dtype=int) for enemy in self._enemies}),
@@ -41,9 +36,7 @@ class SafePath(gym.Env):
                 "target":  spaces.Box(0, size - 1, shape=(2,), dtype=int) 
             })
         
-        # We have 4 actions, corresponding to "right", "up", "left", "down" for each predator and agent
         self.action_space = spaces.Discrete(4)
-
 
         """
         The following dictionary maps abstract actions from `self.action_space` to 
@@ -61,19 +54,17 @@ class SafePath(gym.Env):
         self._step_cost = -0.01
         self._weather_step_coefficient = 0.5
         
-        # Conditions 
         if weather == "winter":
             self._step_cost = -0.1
             
-        # Flangs
         self._left_flang_position = np.array([5, self._target.position[1]])
         self._right_flang_position = np.array([self._target.position[0], self.grid_size - 5])
 
-        print("self._right_flang_position",self._right_flang_position)
+        # print("self._right_flang_position",self._right_flang_position)
         self.metadata["render_fps"] = fps
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-        self._inference = {}
+        self._inference = None
         
         """
         If human-rendering is used, `self.window` will be a reference
@@ -131,9 +122,9 @@ class SafePath(gym.Env):
         # Calculate distance 
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
         
-        if self._inference['flang'] == "LEFT":
-            self._distance_to_flang = self._main_unit_group.position[1] - self._left_flang_position[1]
-        elif self._inference['flang'] == "RIGHT":
+        if self._inference.flang == "LEFT":
+            self._distance_to_flang = abs(self._main_unit_group.position[1] - self._left_flang_position[1])
+        elif self._inference.flang == "RIGHT":
             self._distance_to_flang = abs(self._main_unit_group.position[0] - self._right_flang_position[0])
 
         # Move the main group 
@@ -156,10 +147,10 @@ class SafePath(gym.Env):
         reward = 1 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else -2  # Binary sparse rewards
         
         # Inference reward calculation
-        if self._inference['flang'] == "LEFT":
-            inference_reward = 1 if (self._main_unit_group.position[1] - self._left_flang_position[1]) < self._distance_to_flang else -2
+        if self._inference.flang == "LEFT":
+            inference_reward = 1 if abs(self._main_unit_group.position[1] - self._left_flang_position[1]) < self._distance_to_flang else -2
        
-        elif self._inference['flang'] == "RIGHT":
+        elif self._inference.flang == "RIGHT":
             inference_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flang_position[0]) < self._distance_to_flang else -3
 
         reward += inference_reward
@@ -187,6 +178,7 @@ class SafePath(gym.Env):
 
         canvas = pygame.Surface((self.window_size, self.window_size))
         canvas.fill((255, 255, 255))
+        canvas.blit(self.background, (0,0))
         pygame.font.init() # you have to call this at the start, 
                    # if you want to use this module.
         font = pygame.font.SysFont('Comic Sans MS', 30)
@@ -213,9 +205,8 @@ class SafePath(gym.Env):
             self.draw_title(canvas, font, pix_square_size, enemy_group.position, enemy_group.name)
           
             
-        # Now we draw the allies
         for ally in self._allies:
-            print(ally.position)
+            # print(ally.position)
             pygame.draw.circle(
                 canvas,
                 (0, 0, 255),
@@ -225,7 +216,6 @@ class SafePath(gym.Env):
         
             self.draw_title(canvas, font, pix_square_size, ally.position, ally.name)
 
-        # Draw the target
         pygame.draw.rect(
                 canvas,
                 (255, 0, 0),
