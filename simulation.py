@@ -10,7 +10,7 @@ import time
 
 class GameSimulation():
     def __init__(self):
-        # hyperparameters
+        # q learing hyperparameters
         self.epsilon = 0.3
         self.alpha = 0.05
         self.gamma = 1
@@ -18,8 +18,9 @@ class GameSimulation():
         self.main_group_index = 0
         self.training_fps = 50000000
         self.simulation_fps = 5
-        self.training_epocs = 20
-        self.simulation_epochs = 5
+        self.training_epocs = 500
+        self.simulation_epochs = 100
+        self.dry_run_epochs = 5
         self.weather = "Winter"
         self.simulation_running = False
         self.iterations = 0
@@ -30,12 +31,17 @@ class GameSimulation():
         
         # window settings
         self.window_size = 1024
-        self.menu_height = 50
+        self.menu_height = 100
         
         # api parameters
         self.api_url = "http://127.0.0.1:105"
         self.inference = Inference()
 
+        # statistic parameters
+        self.gather_statistic = False
+        self.encoundered_number = 0
+        
+        
     def setup_actors(self):
         # actors
         t90 = Tank(name="Bullet 1", size=1)
@@ -47,16 +53,18 @@ class GameSimulation():
 
 
         enemy_locator = Locator(name="Enemy Locator", speed=0, size=1)
-        enemy_tank = Tank(name="T92", speed=1.5, size=1)
+        enemy_tank = Tank(name="T92", speed=1.5, size=1, cover_area=100)
         bm_21 = Tank(name="BM21", speed=0, size=3, cover_area=100)
 
         enemy_commander = Soldier(name="Prigozhin", size=1)
 
-        self.enemies = [UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
+        self.enemies = [
+                UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
                 UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Assault group 1", speed=2),
                 UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Assault group 2", speed=1),
                 UnitGroup(position=np.array([28, 28]), units=[bm_21], name="Defence group 1", speed=0), 
-                UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0)]
+                UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0)
+                ]
 
 
         self.target_group = UnitGroup(position=np.array([24, 5]), units=[enemy_commander], name="Prigozhin")
@@ -98,11 +106,14 @@ class GameSimulation():
     def reset_train_and_simulate_states(self):
         self.inference.train = False
         self.inference.simulate = False
+        self.inference.dryrun = False
+        # self.encoundered_number = 0
         self.iterations = 0
         self.make_api_calls_to_get_inference = True
 
     
     def q_learning_simulation(self):        
+        
         for i in range(1, self.iterations):
             battleground_observations, info = self.env.reset()
             main_unit_group = battleground_observations["main_group"]
@@ -113,6 +124,7 @@ class GameSimulation():
             terminated = False
             
             epochs, penalties, reward = 0, 0, 0
+            was_encouted = False
             
             while not self.q_leaninng_keybord_terminated and not terminated:
                 if random.uniform(0, 1) < self.epsilon:
@@ -123,6 +135,9 @@ class GameSimulation():
                 self.check_for_quit()
 
                 next_groups_observation, reward, terminated, _, info = self.env.step(action)
+                if info["encountered"] and self.gather_statistic:
+                    was_encouted = True
+                
                 next_state = next_groups_observation["main_group"].calculate_state()
 
                 old_value = main_unit_group.q_table[main_unit_group.state, action]
@@ -140,11 +155,18 @@ class GameSimulation():
                 main_unit_group.state = next_state
                 epochs += 1
     
-                print("epochs", str(i))
                 if penalties == 100:
                     terminated = True
-                    
-                    
+    
+            if was_encouted:
+                print("was_encouted",self.encoundered_number)
+                print("epochs",str(i))
+
+                self.encoundered_number += 1
+            print("epochs",str(i))
+            print("epochs",info["encountered"])
+
+        self.env.set_encounters(self.encoundered_number)
         self.reset_train_and_simulate_states()
 
     def main(self):
@@ -162,20 +184,35 @@ class GameSimulation():
             if (self.inference.simulate): 
                 self.q_leaninng_keybord_terminated = False
                 self.make_api_calls_to_get_inference = False
-                self.env.set_fps(self.simulation_fps)
-                self.env.set_render_mode("human")
-                self.epsilon = 0.01
-                self.iterations = self.simulation_epochs
-                self.q_learning_simulation() 
-
-
-            if (self.inference.train): 
-                self.q_leaninng_keybord_terminated = False
-                self.make_api_calls_to_get_inference = False
+                # train
                 self.env.set_fps(self.training_fps)
                 self.env.set_render_mode("train")
                 self.epsilon = 0.1
                 self.iterations = self.training_epocs
+                self.q_learning_simulation() 
+
+                # gather statistics
+                self.gather_statistic = True
+                self.epsilon = 0.01
+                self.iterations = self.simulation_epochs
+                self.env.set_render_mode("train")
+                self.env.set_total_iterations(self.iterations)
+                self.q_learning_simulation() 
+                self.gather_statistic = False
+
+                # dry run
+                self.env.set_fps(self.simulation_fps)
+                self.env.set_render_mode("human")
+                self.iterations = self.dry_run_epochs
+                self.q_learning_simulation() 
+
+                
+            if (self.inference.dryrun): 
+                self.q_leaninng_keybord_terminated = False
+                self.make_api_calls_to_get_inference = False
+                self.env.set_render_mode("human")
+                self.epsilon = 0.1
+                self.iterations = self.dry_run_epochs
                 self.q_learning_simulation() 
                 
     
@@ -188,6 +225,14 @@ class GameSimulation():
                     self.main_running = False
                     pygame.quit()
                     sys.exit()
+
+                # back to initial state
+                if event.key == pygame.K_SPACE:
+                    self.q_leaninng_keybord_terminated = True
+                    print(self.inference)
+                    self.main_running = True
+                    self.reset_train_and_simulate_states()
+                    self.env.reset()
 
                 # back to initial state
                 if event.key == pygame.K_SPACE:

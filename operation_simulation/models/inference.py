@@ -6,3 +6,4 @@ class Inference:
     flang: str = "CENTER"
     train: bool = False
     simulate: bool = False
+    dryrun: bool = False

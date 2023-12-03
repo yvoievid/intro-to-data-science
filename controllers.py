@@ -8,7 +8,8 @@ inference = Inference(**{
                 'strategy':"DEFEND",
                 'flang': "CENTER",
                 'simulate': False,
-                'train': False })
+                'train': False,
+                'dryrun': False})
 
 
 @app.route('/getInference/', methods=['GET'])
@@ -17,6 +18,7 @@ def welcome():
     original_indefence = copy.deepcopy(inference)
     inference.train = False
     inference.simulate = False
+    inference.dryrun = False
     return jsonify(original_indefence)
 
 
@@ -26,7 +28,7 @@ def train():
     inference = Inference(**request.json)
     inference.train = True
     return jsonify(inference)
-  
+
 
 @app.route('/command/simulate', methods=['GET', 'POST'])
 def simulate():
@@ -35,12 +37,14 @@ def simulate():
     inference.simulate = True
     return jsonify(inference)
 
-@app.route('/command/reset', methods=['GET', 'POST'])
-def reset_inference():
+
+@app.route('/command/dryrun', methods=['GET', 'POST'])
+def dryrun():
     global inference
-    inference.train = False
-    inference.simulate = False
-    return "SUCCESS"
+    inference = Inference(**request.json)
+    inference.dryrun = True
+    return jsonify(inference)
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=105)
