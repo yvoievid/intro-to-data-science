@@ -4,20 +4,20 @@ from gymnasium import spaces
 
 import pygame
 import numpy as np
+import copy
 
-from ..utils.observation_space import MultiAgentObservationSpace
-from ..utils.action_space import MultiAgentActionSpace
-from ..models.unit import Unit
-from ..models.soldier import Soldier
 
 
 class SafePath(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 5}
+    metadata = {"render_modes": ["human", "rgb_array", "train"], "render_fps": 5}
 
-    def __init__(self, window=None, fps=5, render_mode="human", size=5, window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather="winter", attack_or_defend="attack", flang="upper"):
-        self.grid_size = size  # The size of the square grid
-        self.window_size = window_size  # The size of the PyGame window
-     
+    def __init__(self, window=None, header=100, background=None, fps=5, render_mode="human", size=5, 
+                 window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather="winter"):
+        self.grid_size = size
+        self.window_size = window_size  
+        self.header_size = header
+        self.background = pygame.transform.scale(background, (window_size, window_size))
+
         self._allies = allies 
         self._enemies = enemies
         
@@ -31,8 +31,6 @@ class SafePath(gym.Env):
         self._main_unit_group = self._allies[main_unit_group_index]
         self._target = target
 
-        # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of {0, ..., `size`}^2, i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(
             {
                 "enemies":  spaces.Dict({enemy.name: spaces.Box(0, size - 1, shape=(2,), dtype=int) for enemy in self._enemies}),
@@ -41,9 +39,7 @@ class SafePath(gym.Env):
                 "target":  spaces.Box(0, size - 1, shape=(2,), dtype=int) 
             })
         
-        # We have 4 actions, corresponding to "right", "up", "left", "down" for each predator and agent
         self.action_space = spaces.Discrete(4)
-
 
         """
         The following dictionary maps abstract actions from `self.action_space` to 
@@ -57,19 +53,31 @@ class SafePath(gym.Env):
             3: np.array([0, -1]),
         }
 
-
+        # Inference parameters
         self._step_cost = -0.01
         self._weather_step_coefficient = 0.5
+        self._weather = weather
         
-        # Conditions 
-        if weather == "winter":
+        if weather == self._weather:
             self._step_cost = -0.1
-            
+        self._strategy = "SAFE"
+        
+        self._encounters_with_emenies = 0    
+        self._was_encounted = False
+        self._total_iterations = 0
+        
+        self._left_flang_position = np.array([5, self._target.position[1]])
+        self._right_flang_position = np.array([self._target.position[0], self.grid_size - 5])
+
         self.metadata["render_fps"] = fps
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-        self._inference = {}
+        self._inference = None
         
+        self.pix_square_size = (
+            self.window_size / self.grid_size
+        ) 
+
         """
         If human-rendering is used, `self.window` will be a reference
         to the window that we draw to. `self.clock` will be a clock that is used
@@ -94,15 +102,17 @@ class SafePath(gym.Env):
                 "allies_alive": { unit_group.name:  unit_group for unit_group in self._allies},
                 "distance": np.linalg.norm(
                     self._main_unit_group.position - self._target.position, ord=1
-            )
+            ),
+                "encountered": self._was_encounted
         }
 
     def reset(self, seed=None, main_unit_index=0, options=None):
         # We need the following line to seed self.np_random
-        super().reset(seed=seed)    
+        super().reset(seed=seed)
         
-
         self._main_unit_group.position = self._main_unit_group_initial_position
+        # self._encounters_with_emenies = 0
+        self._was_encounted = False
         
         for enemy in self._enemies:
             for enemy_init_name_position in self._enemies_inital_positions.items():
@@ -112,6 +122,7 @@ class SafePath(gym.Env):
         # Calculate how far we are from our target
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
         
+        # Calculatte
         observation = self._get_obs()
         info = self._get_info()
 
@@ -126,8 +137,12 @@ class SafePath(gym.Env):
         
         # Calculate distance 
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
-
         
+        if self._inference.flang == "LEFT":
+            self._distance_to_flang = abs(self._main_unit_group.position[1] - self._left_flang_position[1])
+        elif self._inference.flang == "RIGHT":
+            self._distance_to_flang = abs(self._main_unit_group.position[0] - self._right_flang_position[0])
+
         # Move the main group 
         self._main_unit_group.position = np.clip(
             self._main_unit_group.position + main_agent_direction, 0, self.grid_size - 1
@@ -139,29 +154,72 @@ class SafePath(gym.Env):
             enemy_group.position + self._action_to_direction[self.action_space.sample()] * enemy_group.speed, 0, self.grid_size - 1
         )
         
-        
         # An episode is done iff the agent has reached the target OR it took to long OR main unit group is eliminated
         terminated = np.array_equal(self._main_unit_group.position, self._target.position ) 
         
+        reward = 0
         
+        distance_reward = 0
         # We add a reward if we are getting closer to the target
-        reward = 1 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else 0  # Binary sparse rewards
-    
+        distance_reward = 2 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else -3  # Binary sparse rewards
+        
+        
         # Inference reward calculation
-        inference_reward = 0
-        if self._inference['flang'] == "LEFT":
-            self._left_flang_position = [5,5]
-            inference_reward = 1 if np.linalg.norm(self._main_unit_group.position - self._left_flang_position , ord=1) < self._distance_to_target_start else 0  # Binary sparse rewards
-
-               
-        reward += inference_reward
+        flang_reward = 0
+        # Flang reward: we are getting more reward if agent following the command of commander and moves towards right flang
+        if self._inference.flang == "LEFT":
+            flang_reward = 1 if abs(self._main_unit_group.position[1] - self._left_flang_position[1]) < self._distance_to_flang else -1
+       
+        elif self._inference.flang == "RIGHT":
+            flang_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flang_position[0]) < self._distance_to_flang else -1
+       
     
+        # Terain reward
+        terrain_reward = 0
+        red, green, blue, alpha = self.canvas.get_at(((self._main_unit_group.position + 0.1) * self.pix_square_size).astype(int))        
+        terain_diff = green - red
+        if terain_diff >= 40:
+            terrain_reward += 1
+    
+        if terain_diff <= -10:
+            terrain_reward -= 3
+        
+        if terain_diff <= -20:
+            terrain_reward = -4
+                
+        if terain_diff <= -140 and not self._strategy == "AGGRESSIVE":
+            print(red, green, blue, alpha)
+            terrain_reward -= 10
+            
+        
+        for enemy in self._enemies:
+            if np.linalg.norm(self._main_unit_group.position - enemy.position) < enemy.get_cover_area()/self.pix_square_size:
+                print(self._main_unit_group.position,"self._main_unit_group.position")
+                print(enemy.get_cover_area(),"enemy.get_cover_area()")
+
+                self._was_encounted = True
+        
+        # Weather reward
+        if self._weather == "winter":
+            terrain_reward *= 2
+            flang_reward *= 2
+            distance_reward *= 0.5
+        
+        # Behaviour reward
+        if self._strategy == "AGGRESSIVE":
+            distance_reward *= 3
+            terrain_reward *= 0.5
+        
+        reward += distance_reward
+        reward += terrain_reward
+        reward += flang_reward
+
         observation = self._get_obs()
         info = self._get_info()
 
         if self.render_mode == "human":
             self._render_frame()
-
+        
         return observation, reward, terminated, False, info
 
     def render(self):
@@ -172,89 +230,89 @@ class SafePath(gym.Env):
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
+            self.window = pygame.display.set_mode((self.window_size, self.header_size + self.window_size))
             
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
-        canvas = pygame.Surface((self.window_size, self.window_size))
-        canvas.fill((255, 255, 255))
-        pygame.font.init() # you have to call this at the start, 
-                   # if you want to use this module.
+        self.canvas = pygame.Surface((self.window_size, self.window_size))
+        self.canvas.fill((255, 255, 255))
+        self.canvas.blit(self.background, (0,0))
+        pygame.font.init()
         font = pygame.font.SysFont('Comic Sans MS', 30)
         
-        pix_square_size = (
-            self.window_size / self.grid_size
-        )  # The size of a single grid square in pixels
+        # Draw the statistic header
+        header_menu = pygame.Surface((self.window_size, self.header_size))
+        header_menu.fill((255, 255, 255))
+        self.window.blit(header_menu, header_menu.get_rect())
+        self.draw_title(self.window, font, self.pix_square_size, np.array([1,1]), "Statistics")
+        self.draw_title(self.window, font, self.pix_square_size, np.array([1,2]), "Figths:" + str(self._encounters_with_emenies) + " out of " + str(self._total_iterations))
+        self.draw_title(self.window, font, self.pix_square_size, np.array([1,3]), "Weather:" + str(self._weather))
+
 
         # First we draw the enemies
         for enemy_group in self._enemies:
             pygame.draw.circle(
-                canvas,
+                self.canvas,
                 (152, 0, 0, 100),
-                (enemy_group.position + 0.5) * pix_square_size ,
-                pix_square_size + enemy_group.get_cover_area(),
+                (enemy_group.position + 0.5) *  self.pix_square_size ,
+                 self.pix_square_size + enemy_group.get_cover_area(),
             )
 
             pygame.draw.circle(
-                canvas,
+                self.canvas,
                 (255, 0, 0),
-                (enemy_group.position + 0.5) * pix_square_size,
-                pix_square_size / 3,
+                (enemy_group.position + 0.5) *  self.pix_square_size,
+                 self.pix_square_size / 3,
             )
-            self.draw_title(canvas, font, pix_square_size, enemy_group.position, enemy_group.name)
+            self.draw_title(self.canvas, font,  self.pix_square_size, enemy_group.position, enemy_group.name)
           
             
-        # Now we draw the allies
         for ally in self._allies:
-            print(ally.position)
             pygame.draw.circle(
-                canvas,
+                self.canvas,
                 (0, 0, 255),
-                (ally.position + 0.5) * pix_square_size,
-                pix_square_size / 3,
+                (ally.position + 0.5) *  self.pix_square_size,
+                 self.pix_square_size / 3,
             )
         
-            self.draw_title(canvas, font, pix_square_size, ally.position, ally.name)
+            self.draw_title(self.canvas, font,  self.pix_square_size, ally.position, ally.name)
 
-
-        # Draw the target
+        # draw target
         pygame.draw.rect(
-                canvas,
-                (255, 0, 0),
+                self.canvas,
+                (0, 255, 0),
                 pygame.Rect(
-                    pix_square_size * self._target.position,
-                    (pix_square_size, pix_square_size),
+                     self.pix_square_size * self._target.position,
+                    (self.pix_square_size,  self.pix_square_size),
                 ),
             )
-        self.draw_title(canvas, font, pix_square_size,  self._target.position, self._target.name)
+        self.draw_title(self.canvas, font,  self.pix_square_size, self._target.position, self._target.name)
 
         for x in range(self.grid_size + 1):
             pygame.draw.line(
-                canvas,
+                self.canvas,
                 0,
-                (0, pix_square_size * x),
-                (self.window_size, pix_square_size * x),
+                (0,  self.pix_square_size * x),
+                (self.window_size,  self.pix_square_size * x),
                 width=1,
             )
             pygame.draw.line(
-                canvas,
+                self.canvas,
                 0,
-                (pix_square_size * x, 0),
-                (pix_square_size * x, self.window_size),
+                ( self.pix_square_size * x, 0),
+                ( self.pix_square_size * x, self.window_size),
                 width=1,
             )
-            
-            
-
+    
         if self.render_mode == "human":
-            self.window.blit(canvas, canvas.get_rect())
+            self.window.blit(self.canvas,(0, self.header_size))
             pygame.event.pump()
             pygame.display.update()
             self.clock.tick(self.metadata["render_fps"])
-        else:  
+        else:
             return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+                np.array(pygame.surfarray.pixels3d(self.canvas)), axes=(1, 0, 2)
             )
 
     def close(self):
@@ -286,10 +344,28 @@ class SafePath(gym.Env):
     def set_fps(self, fps):
         self.metadata["render_fps"] = fps
     
+    def set_render_mode(self, render_mode):
+        self.render_mode = render_mode
+    
     def set_inference(self, inference):
         self._inference = inference
     
+    def set_encounters(self, encounters):
+        self._encounters_with_emenies = encounters
+        
+    def set_total_iterations(self, total_iterations):
+        self._total_iterations = total_iterations
     
-# Some constants... you know... to make life easier
+
+    def set_main_group_intex(self, index):
+        self._main_unit_group = self._allies[index]
+        self._main_unit_group_index = index
+        self._main_unit_group_initial_position = copy.deepcopy(self._allies[index].position)
+
+    def set_weather(self, weather):
+        self._weather = weather
+
+    def set_strategy(self, strategy):
+        self._strategy = strategy
+        
 LABEL_SHIFT = (1,1)
-PREDATOR_OBJECT = 1
