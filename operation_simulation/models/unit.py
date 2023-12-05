@@ -11,7 +11,6 @@ class Unit:
     health: int = 25
     damage: int = 5
     speed: int = 1
-    action_space: spaces.Space = spaces.Discrete(4)
 
     def draw(self):
         pass

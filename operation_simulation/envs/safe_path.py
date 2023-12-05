@@ -194,9 +194,6 @@ class SafePath(gym.Env):
         
         for enemy in self._enemies:
             if np.linalg.norm(self._main_unit_group.position - enemy.position) < enemy.get_cover_area()/self.pix_square_size:
-                print(self._main_unit_group.position,"self._main_unit_group.position")
-                print(enemy.get_cover_area(),"enemy.get_cover_area()")
-
                 self._was_encounted = True
         
         # Weather reward
@@ -239,7 +236,7 @@ class SafePath(gym.Env):
         self.canvas.fill((255, 255, 255))
         self.canvas.blit(self.background, (0,0))
         pygame.font.init()
-        font = pygame.font.SysFont('Comic Sans MS', 30)
+        font = pygame.font.SysFont('microsoftjhengheimicrosoftjhengheiuilight', 24)
         
         # Draw the statistic header
         header_menu = pygame.Surface((self.window_size, self.header_size))

@@ -14,7 +14,6 @@ class UnitGroup:
     speed: int = 1
     name: str = ""
     state: int = 0
-    action_space: spaces.Space = spaces.Discrete(4)
     position: list = field(default_factory=list)
     
     def get_cover_area(self):

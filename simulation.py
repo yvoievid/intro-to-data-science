@@ -46,7 +46,7 @@ class GameSimulation():
         t90 = Tank(name="Bullet 1", size=1)
         abrams = Tank(name="Bullet 2", size=1)
 
-        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name="alfa"),
+        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name="alpha"),
                     UnitGroup(position=np.array([5, 25]), speed=1, units=[t90, abrams],name="omega"),
                     UnitGroup(position=np.array([15, 29]), speed=1, units=[t90, abrams],name="delta")]
 
@@ -59,9 +59,9 @@ class GameSimulation():
 
         self.enemies = [
                     UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
-                    UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Analogovnet 1", speed=2),
-                    UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Analogovnet 2", speed=1),
-                    UnitGroup(position=np.array([15, 10]), units=[enemy_tank], name="Analogovnet 3", speed=1),
+                    UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Enemy group 1", speed=2),
+                    UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Enemy group 2", speed=1),
+                    UnitGroup(position=np.array([15, 10]), units=[enemy_tank], name="Enemy group 3", speed=1),
                     UnitGroup(position=np.array([28, 28]), units=[bm_21], name="Defence group 1", speed=0), 
                     UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0)
                 ]
