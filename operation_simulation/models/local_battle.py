@@ -1,7 +1,7 @@
-from .unit import Unit
-from .soldier import Soldier
-from .tank import Tank
-from ..helpers import set_units, attack_units
+from operation_simulation.models.unit import Unit
+from operation_simulation.models.soldier import Soldier
+from operation_simulation.models.tank import Tank
+from operation_simulation.helpers import set_units, attack_units
 import numpy as np
 
 def local_battle(alliance, enemies):

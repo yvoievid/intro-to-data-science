@@ -191,6 +191,7 @@ class GameSimulation():
             if (self.inference.simulate): 
                 self.train()    
                 self.gather_statistics()
+                #  simulate local battles 
                 self.dryrun()           
                 
             if (self.inference.dryrun): 

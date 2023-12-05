@@ -249,7 +249,10 @@ class SafePath(gym.Env):
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,2]), "Figths:" + str(self._encounters_with_emenies) + " out of " + str(self._total_iterations))
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,3]), "Weather:" + str(self._weather))
 
-
+        
+        self.draw_title(self.window, font, self.pix_square_size, np.array([10,3]), "Alpha:" + str(self._weather))
+        
+        
         # First we draw the enemies
         for enemy_group in self._enemies:
             pygame.draw.circle(

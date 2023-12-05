@@ -10,3 +10,7 @@ class Tank(Unit):
     cover_area: int = 3
     health: int = 45
     damage: int = 15
+    
+    def attack_enemy(self, target):
+        print("attack_enemy")
+        pass
