@@ -2,8 +2,11 @@ from dataclasses import dataclass
 
 @dataclass
 class Inference: 
-    strategy: str = "ATTACK"
+    command: str = "ATTACK"
     flang: str = "CENTER"
+    group: str = ""
+    weather: str = "summer"
+    strategy: str = "aggressive"
     train: bool = False
     simulate: bool = False
     dryrun: bool = False

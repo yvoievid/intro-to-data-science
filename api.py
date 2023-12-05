@@ -5,7 +5,7 @@ import copy
 app = Flask(__name__)
 
 inference = Inference(**{
-                'strategy':"DEFEND",
+                'command':"ATTACK",
                 'flang': "CENTER",
                 'simulate': False,
                 'train': False,

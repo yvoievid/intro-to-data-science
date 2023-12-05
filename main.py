@@ -3,10 +3,10 @@ import concurrent.futures
 import subprocess
 
 def run_flask():
-    subprocess.run(['python', 'controllers.py'])
+    subprocess.run(['python', 'api.py'])
 
 def run_pygame():
-    subprocess.run(['python', 'simulation_start.py'])
+    subprocess.run(['python', 'simulation_main_process.py'])
 
 if __name__ == '__main__':
     with concurrent.futures.ThreadPoolExecutor() as executor:

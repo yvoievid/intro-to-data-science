@@ -3,7 +3,6 @@ import gymnasium as gym
 import numpy as np
 import pygame
 from operation_simulation.models import Soldier, Locator, Tank, UnitGroup, Inference
-from operation_simulation.layout.main_layout import MainLayout
 import sys
 import requests
 import time
@@ -21,7 +20,7 @@ class GameSimulation():
         self.training_epocs = 500
         self.simulation_epochs = 100
         self.dry_run_epochs = 5
-        self.weather = "Winter"
+        self.weather = "unknown"
         self.simulation_running = False
         self.iterations = 0
         self.main_running = True
@@ -53,17 +52,18 @@ class GameSimulation():
 
 
         enemy_locator = Locator(name="Enemy Locator", speed=0, size=1)
-        enemy_tank = Tank(name="T92", speed=1.5, size=1, cover_area=100)
+        enemy_tank = Tank(name="T92", speed=1.5, size=1, cover_area=10)
         bm_21 = Tank(name="BM21", speed=0, size=3, cover_area=100)
 
         enemy_commander = Soldier(name="Prigozhin", size=1)
 
         self.enemies = [
-                UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
-                UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Assault group 1", speed=2),
-                UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Assault group 2", speed=1),
-                UnitGroup(position=np.array([28, 28]), units=[bm_21], name="Defence group 1", speed=0), 
-                UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0)
+                    UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
+                    UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Analogovnet 1", speed=2),
+                    UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Analogovnet 2", speed=1),
+                    UnitGroup(position=np.array([15, 10]), units=[enemy_tank], name="Analogovnet 3", speed=1),
+                    UnitGroup(position=np.array([28, 28]), units=[bm_21], name="Defence group 1", speed=0), 
+                    UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0)
                 ]
 
 
@@ -73,10 +73,7 @@ class GameSimulation():
         # creating interface
         window = pygame.display.set_mode((self.window_size, self.menu_height + self.window_size))
         terrain_background = pygame.image.load(self.backgroud_path)
-
-        self.layout = MainLayout(window=window)
-        self.layout.render()
-
+        
         # create gym env
         self.env = gym.make('operation_simulation/SafePath-v0',
                     window=window, 
@@ -89,27 +86,14 @@ class GameSimulation():
                     enemies=self.enemies, 
                     target=self.target_group,
                     main_unit_group_index=self.main_group_index,
-                    weather="winter")
+                    weather=self.weather)
 
         self.env.reset()
+        # decide the main assault group        
+        for unit_group in self.alliance:
+            unit_group.q_table = np.zeros((self.env.observation_space["main_group"].n,self.env.action_space.n))
 
-        # decide the main assault group
-        main_unit_group = self.alliance[self.main_group_index]
-        main_unit_group.q_table = np.zeros((self.env.observation_space["main_group"].n,self.env.action_space.n))
         
-            
-    # Function to get shared state from Flask API
-    def get_shared_state(self):
-        response = requests.get(self.api_url+"/getInference/").json()
-        self.inference = Inference(**response)
-
-    def reset_train_and_simulate_states(self):
-        self.inference.train = False
-        self.inference.simulate = False
-        self.inference.dryrun = False
-        # self.encoundered_number = 0
-        self.iterations = 0
-        self.make_api_calls_to_get_inference = True
 
     
     def q_learning_simulation(self):        
@@ -159,15 +143,38 @@ class GameSimulation():
                     terminated = True
     
             if was_encouted:
-                print("was_encouted",self.encoundered_number)
-                print("epochs",str(i))
-
                 self.encoundered_number += 1
-            print("epochs",str(i))
-            print("epochs",info["encountered"])
 
         self.env.set_encounters(self.encoundered_number)
         self.reset_train_and_simulate_states()
+
+    def train(self):
+        print("training....")
+        self.q_leaninng_keybord_terminated = False
+        self.make_api_calls_to_get_inference = False
+        self.env.set_fps(self.training_fps)
+        self.env.set_render_mode("train")
+        self.epsilon = 0.1
+        self.iterations = self.training_epocs
+        self.q_learning_simulation() 
+
+    def gather_statistics(self):
+        print("gathering statistic....")
+        self.gather_statistic = True
+        self.epsilon = 0.01
+        self.iterations = self.simulation_epochs
+        self.env.set_render_mode("train")
+        self.env.set_total_iterations(self.iterations)
+        self.q_learning_simulation() 
+        self.gather_statistic = False
+        
+    def dryrun(self):
+        print("running....")
+        self.env.set_fps(self.simulation_fps)
+        self.env.set_render_mode("human")
+        self.iterations = self.dry_run_epochs
+        self.q_learning_simulation() 
+
 
     def main(self):
         pygame.init()
@@ -182,39 +189,13 @@ class GameSimulation():
                 time.sleep(1)
                         
             if (self.inference.simulate): 
-                self.q_leaninng_keybord_terminated = False
-                self.make_api_calls_to_get_inference = False
-                # train
-                self.env.set_fps(self.training_fps)
-                self.env.set_render_mode("train")
-                self.epsilon = 0.1
-                self.iterations = self.training_epocs
-                self.q_learning_simulation() 
-
-                # gather statistics
-                self.gather_statistic = True
-                self.epsilon = 0.01
-                self.iterations = self.simulation_epochs
-                self.env.set_render_mode("train")
-                self.env.set_total_iterations(self.iterations)
-                self.q_learning_simulation() 
-                self.gather_statistic = False
-
-                # dry run
-                self.env.set_fps(self.simulation_fps)
-                self.env.set_render_mode("human")
-                self.iterations = self.dry_run_epochs
-                self.q_learning_simulation() 
-
+                self.train()    
+                self.gather_statistics()
+                self.dryrun()           
                 
             if (self.inference.dryrun): 
-                self.q_leaninng_keybord_terminated = False
-                self.make_api_calls_to_get_inference = False
-                self.env.set_render_mode("human")
-                self.epsilon = 0.1
-                self.iterations = self.dry_run_epochs
-                self.q_learning_simulation() 
-                
+                self.dryrun()           
+
     
     def check_for_quit(self):
         for event in pygame.event.get():
@@ -242,3 +223,28 @@ class GameSimulation():
                     self.reset_train_and_simulate_states()
                     self.env.reset()
 
+
+    # Function to get shared state from Flask API
+    def get_shared_state(self):
+        response = requests.get(self.api_url+"/getInference/").json()
+        self.inference = Inference(**response)
+        self.env.set_main_group_intex(self.getIndexByName(self.alliance, self.inference.group))
+        self.env.set_weather(self.inference.weather)
+        if self.inference.weather == "winter":
+            self.gamma = 0.5
+        self.env.set_strategy(self.inference.strategy)    
+        
+        
+    def reset_train_and_simulate_states(self):
+        self.inference.train = False
+        self.inference.simulate = False
+        self.inference.dryrun = False
+        self.iterations = 0
+        self.encoundered_number = 0
+        self.make_api_calls_to_get_inference = True
+
+    def getIndexByName(self, li,target): 
+        for index, x in enumerate(li): 
+            if x.name == target: 
+                return index 
+        return -1

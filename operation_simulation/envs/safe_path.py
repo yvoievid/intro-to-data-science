@@ -4,6 +4,8 @@ from gymnasium import spaces
 
 import pygame
 import numpy as np
+import copy
+
 
 
 class SafePath(gym.Env):
@@ -29,7 +31,6 @@ class SafePath(gym.Env):
         self._main_unit_group = self._allies[main_unit_group_index]
         self._target = target
 
-        # self._gather_statistics = 
         self.observation_space = spaces.Dict(
             {
                 "enemies":  spaces.Dict({enemy.name: spaces.Box(0, size - 1, shape=(2,), dtype=int) for enemy in self._enemies}),
@@ -59,6 +60,7 @@ class SafePath(gym.Env):
         
         if weather == self._weather:
             self._step_cost = -0.1
+        self._strategy = "SAFE"
         
         self._encounters_with_emenies = 0    
         self._was_encounted = False
@@ -156,11 +158,13 @@ class SafePath(gym.Env):
         terminated = np.array_equal(self._main_unit_group.position, self._target.position ) 
         
         reward = 0
+        
+        distance_reward = 0
         # We add a reward if we are getting closer to the target
-        reward = 2 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else -3  # Binary sparse rewards
+        distance_reward = 2 if np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1) < self._distance_to_target_start else -3  # Binary sparse rewards
+        
         
         # Inference reward calculation
-        
         flang_reward = 0
         # Flang reward: we are getting more reward if agent following the command of commander and moves towards right flang
         if self._inference.flang == "LEFT":
@@ -168,27 +172,26 @@ class SafePath(gym.Env):
        
         elif self._inference.flang == "RIGHT":
             flang_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flang_position[0]) < self._distance_to_flang else -1
-        reward += flang_reward
-        
-        # Terain Reward
+       
+    
+        # Terain reward
         terrain_reward = 0
         red, green, blue, alpha = self.canvas.get_at(((self._main_unit_group.position + 0.1) * self.pix_square_size).astype(int))        
-        diff = green - red
-        if diff >= 40:
+        terain_diff = green - red
+        if terain_diff >= 40:
             terrain_reward += 1
     
-        if diff <= -10:
-            terrain_reward += -1
+        if terain_diff <= -10:
+            terrain_reward -= 3
         
-        if diff <= -20:
-            terrain_reward += -3
+        if terain_diff <= -20:
+            terrain_reward = -4
                 
-        if diff <= -140:
+        if terain_diff <= -140 and not self._strategy == "AGGRESSIVE":
             print(red, green, blue, alpha)
             terrain_reward -= 10
             
         
-        # if np.linalg.norm(self._main_unit_group.position - ) 
         for enemy in self._enemies:
             if np.linalg.norm(self._main_unit_group.position - enemy.position) < enemy.get_cover_area()/self.pix_square_size:
                 print(self._main_unit_group.position,"self._main_unit_group.position")
@@ -196,8 +199,21 @@ class SafePath(gym.Env):
 
                 self._was_encounted = True
         
+        # Weather reward
+        if self._weather == "winter":
+            terrain_reward *= 2
+            flang_reward *= 2
+            distance_reward *= 0.5
+        
+        # Behaviour reward
+        if self._strategy == "AGGRESSIVE":
+            distance_reward *= 3
+            terrain_reward *= 0.5
+        
+        reward += distance_reward
         reward += terrain_reward
-    
+        reward += flang_reward
+
         observation = self._get_obs()
         info = self._get_info()
 
@@ -222,12 +238,12 @@ class SafePath(gym.Env):
         self.canvas = pygame.Surface((self.window_size, self.window_size))
         self.canvas.fill((255, 255, 255))
         self.canvas.blit(self.background, (0,0))
-        pygame.font.init() 
+        pygame.font.init()
         font = pygame.font.SysFont('Comic Sans MS', 30)
         
         # Draw the statistic header
         header_menu = pygame.Surface((self.window_size, self.header_size))
-        header_menu.fill((255, 255, 255))        
+        header_menu.fill((255, 255, 255))
         self.window.blit(header_menu, header_menu.get_rect())
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,1]), "Statistics")
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,2]), "Figths:" + str(self._encounters_with_emenies) + " out of " + str(self._total_iterations))
@@ -340,6 +356,16 @@ class SafePath(gym.Env):
     def set_total_iterations(self, total_iterations):
         self._total_iterations = total_iterations
     
-# Some constants... you know... to make life easier
+
+    def set_main_group_intex(self, index):
+        self._main_unit_group = self._allies[index]
+        self._main_unit_group_index = index
+        self._main_unit_group_initial_position = copy.deepcopy(self._allies[index].position)
+
+    def set_weather(self, weather):
+        self._weather = weather
+
+    def set_strategy(self, strategy):
+        self._strategy = strategy
+        
 LABEL_SHIFT = (1,1)
-PREDATOR_OBJECT = 1
