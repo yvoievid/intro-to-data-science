@@ -1,6 +1,7 @@
 from .unit import Unit
 import pygame
 from dataclasses import dataclass
+import numpy as np
 
 @dataclass
 class Tank(Unit):
@@ -11,6 +12,10 @@ class Tank(Unit):
     health: int = 45
     damage: int = 15
     
-    def attack_enemy(self, target):
-        print("attack_enemy")
-        pass
+    def attack_enemy(self, enemies):
+        size = 3 if len(enemies) >= 3 else len(enemies)
+        ids = np.random.choice(a=len(enemies), size=size, replace=False)
+        for i in ids:
+            target = enemies[i]
+            damage = self.inflict_damage(target)
+            target.update_health(damage)

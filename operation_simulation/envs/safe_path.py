@@ -248,9 +248,12 @@ class SafePath(gym.Env):
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,2]), "Figths:" + str(self._encounters_with_emenies) + " out of " + str(self._total_iterations))
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,3]), "Weather:" + str(self._weather))
 
-        #self.draw_title(self.window, font, self.pix_square_size, np.array([10,2]), f"Probability of defeating {outcom}: {}")
+        i = 1
         for item in self.local_battle_prob:
-            self.draw_title(self.window, font, self.pix_square_size, np.array([10,2]), f"Probability of defeating {item[0]}: {item[1]}")
+            for key, value in item.items():
+                self.draw_title(self.window, font, self.pix_square_size, np.array([10, i]), f"Probability of defeating {key}: {value}")
+                i += 0.5
+            #self.draw_title(self.window, font, self.pix_square_size, np.array([10,2]), f"Probability of defeating {key}: {value}")
 
         
         

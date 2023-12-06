@@ -1,6 +1,24 @@
 from ..models import Soldier, Tank
 import numpy as np
 
+is_tank = np.vectorize(lambda x: isinstance(x, Tank))
+is_soldier = np.vectorize(lambda x: isinstance(x, Soldier))
+
+def count_group_units(unit_group):
+    '''
+        Counts number of tanks and soliders in the unit group
+
+        Input:
+            unit_group - object of class UnitGroup
+        
+        Output:
+            dictionary with keys as unit types and values as their count
+
+    '''
+    tanks = np.sum(is_tank(unit_group))
+    soliders = np.sum(is_soldier(unit_group))
+    return {'tanks': tanks, 'soldiers': soliders}
+
 def set_units(items):
     '''
         Creates an array of units with account on the input dictionary

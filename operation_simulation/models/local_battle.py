@@ -1,7 +1,7 @@
 from operation_simulation.models.unit import Unit
 from operation_simulation.models.soldier import Soldier
 from operation_simulation.models.tank import Tank
-from operation_simulation.helpers import set_units, attack_units
+from operation_simulation.helpers import set_units, attack_units, count_group_units
 import numpy as np
 
 def local_battle(alliance, enemies):
@@ -43,8 +43,26 @@ def simulate_local_battle(alliance_powers, enemy_powers, n_simulations):
         if outcome[0] == "Alliance won!":
             wins += 1
             
-    print('Number of alliance wins: ', wins)
-    print(f'Fraction of alliance winning the battle: ', wins/n_simulations)
+    prob_winning = wins/n_simulations
+            
+    #print('Number of alliance wins: ', wins)
+    #print(f'Fraction of alliance winning the battle: ', prob_winning)
+
+    return prob_winning
+
+def group_battles(alliance, enemy_group, group_name):
+    alliance, enemies = count_group_units(alliance), count_group_units(enemy_group)
+    print("ALLIANCE: ", alliance)
+    print("ENEMY: ", enemies)
+    p = simulate_local_battle(alliance_powers = alliance, enemy_powers=enemies, n_simulations=100)
+    print("ENEMY GROUP: ", enemy_group) 
+    return {f"{group_name}": p}
+
+    # for enemy_group in groups:
+    #     enemy_units = count_group_units(enemy_group)
+    #     p = simulate_local_battle(alliance_powers = alliance, enemy_powers=enemy_group, n_simulations=100)
+    # return {f"{group.name}": p}
+
 
 if __name__ == "__main__":
     alliance_powers = {'soliders': 10, 'tanks': 5}
