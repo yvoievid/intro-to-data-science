@@ -78,6 +78,8 @@ class SafePath(gym.Env):
             self.window_size / self.grid_size
         ) 
 
+        self.local_battle_prob = []
+
         """
         If human-rendering is used, `self.window` will be a reference
         to the window that we draw to. `self.clock` will be a clock that is used
@@ -246,8 +248,10 @@ class SafePath(gym.Env):
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,2]), "Figths:" + str(self._encounters_with_emenies) + " out of " + str(self._total_iterations))
         self.draw_title(self.window, font, self.pix_square_size, np.array([1,3]), "Weather:" + str(self._weather))
 
-        
-        self.draw_title(self.window, font, self.pix_square_size, np.array([10,3]), "Alpha:" + str(self._weather))
+        #self.draw_title(self.window, font, self.pix_square_size, np.array([10,2]), f"Probability of defeating {outcom}: {}")
+        for item in self.local_battle_prob:
+            self.draw_title(self.window, font, self.pix_square_size, np.array([10,2]), f"Probability of defeating {item[0]}: {item[1]}")
+
         
         
         # First we draw the enemies
@@ -367,5 +371,8 @@ class SafePath(gym.Env):
 
     def set_strategy(self, strategy):
         self._strategy = strategy
+
+    def set_local_battle_prob(self, outcomes):
+        self.local_battle_prob = outcomes
         
 LABEL_SHIFT = (1,1)

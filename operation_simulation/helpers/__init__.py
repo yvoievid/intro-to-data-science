@@ -1,1 +1,1 @@
-from operation_simulation.helpers.units import set_units, has_active_units, filter_active_units, attack_units
+from operation_simulation.helpers.units import set_units, has_active_units, filter_active_units, attack_units, count_group_units
