@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from operation_simulation.models.inference import Inference
+from operation_simulation.helpers.utils import api_response
 import copy
 
 app = Flask(__name__)
@@ -22,36 +23,26 @@ def welcome():
     return jsonify(original_indefence)
 
 
-@app.route('/command/train', methods=['GET', 'POST'])
-def train():
-    global inference
-    inference = Inference(**request.json)
-    inference.train = True
-    return jsonify(inference)
-
-
 @app.route('/command/simulate', methods=['GET', 'POST'])
 def simulate():
     global inference
     inference = Inference(**request.json)
     inference.simulate = True
-    return jsonify(inference)
-
+    return api_response(inference)
 
 @app.route('/command/dryrun', methods=['GET', 'POST'])
 def dryrun():
     global inference
     inference = Inference(**request.json)
     inference.dryrun = True
-    return jsonify(inference)
+    return api_response(inference)
 
 
 @app.route('/command/smoke', methods=['GET', 'POST'])
 def smoke():
     global inference
     inference = Inference(**request.json)
-    return f"""Successfully started simmulation with group {inference.group.upper()} that make {inference.command.upper()}
-        through {inference.flang.upper()} flang considering that it is {inference.weather.upper()} year period and using {inference.strategy.upper()} strategy"""
+    return api_response(inference)
 
 
 if __name__ == '__main__':
