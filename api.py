@@ -46,5 +46,13 @@ def dryrun():
     return jsonify(inference)
 
 
+@app.route('/command/smoke', methods=['GET', 'POST'])
+def smoke():
+    global inference
+    inference = Inference(**request.json)
+    return f"""Successfully started simmulation with group {inference.group} that make {inference.command}
+        through {inference.flang} flang considering that it is {inference.weather} year period and using {inference.strategy} strategy"""
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=105)
