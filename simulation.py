@@ -22,7 +22,7 @@ class GameSimulation():
         self.training_epocs = 500
         self.simulation_epochs = 100
         self.dry_run_epochs = 5
-        self.weather = "unknown"
+        self.weather = "UNKNOWN"
         self.simulation_running = False
         self.iterations = 0
         self.main_running = True
@@ -48,9 +48,9 @@ class GameSimulation():
         t90 = Tank(name="Bullet 1", size=1)
         abrams = Tank(name="Bullet 2", size=1)
 
-        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name="alpha"),
-                    UnitGroup(position=np.array([5, 25]), speed=1, units=[t90, abrams],name="omega"),
-                    UnitGroup(position=np.array([15, 29]), speed=1, units=[t90, abrams],name="delta")]
+        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name="ALPHA"),
+                    UnitGroup(position=np.array([5, 25]), speed=1, units=[t90, abrams],name="OMEGA"),
+                    UnitGroup(position=np.array([15, 29]), speed=1, units=[t90, abrams],name="DELTA")]
 
 
         enemy_locator = Locator(name="Enemy Locator", speed=0, size=1)
@@ -60,12 +60,12 @@ class GameSimulation():
         enemy_commander = Soldier(name="Prigozhin", size=1)
 
         self.enemies = [
-                    UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="locator group", speed=0), 
-                    UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="Enemy group 1", speed=2),
-                    UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="Enemy group 2", speed=1),
-                    UnitGroup(position=np.array([15, 10]), units=[enemy_tank], name="Enemy group 3", speed=1),
-                    UnitGroup(position=np.array([28, 28]), units=[bm_21], name="Defence group 1", speed=0), 
-                    UnitGroup(position=np.array([5, 5]), units=[bm_21], name="Defence group 2", speed=0)
+                    UnitGroup(position=np.array([30, 2]), units=[enemy_locator], name="LOCATOR GROUP", speed=0), 
+                    UnitGroup(position=np.array([20, 20]), units=[enemy_tank], name="ENEMY GROUP 1", speed=2),
+                    UnitGroup(position=np.array([25, 15]), units=[enemy_tank], name="ENEMY GROUP 2", speed=1),
+                    UnitGroup(position=np.array([15, 10]), units=[enemy_tank], name="ENEMY GROUP 3", speed=1),
+                    UnitGroup(position=np.array([28, 28]), units=[bm_21], name="DEFENCE GROUP 1", speed=0), 
+                    UnitGroup(position=np.array([5, 5]), units=[bm_21], name="DEFENCE GROUP 2", speed=0)
                 ]
 
 
@@ -193,7 +193,8 @@ class GameSimulation():
             if (self.inference.simulate): 
                 self.train()    
                 self.gather_statistics()
-                self.local_battle()
+                #  simulate local battles 
+                
                 self.dryrun()           
                 
             if (self.inference.dryrun): 
@@ -237,7 +238,6 @@ class GameSimulation():
             self.gamma = 0.5
         self.env.set_strategy(self.inference.strategy)    
         
-        
     def reset_train_and_simulate_states(self):
         self.inference.train = False
         self.inference.simulate = False
@@ -251,14 +251,3 @@ class GameSimulation():
             if x.name == target: 
                 return index 
         return -1
-
-    def local_battle(self):
-        alliance_units = self.alliance[self.getIndexByName(self.alliance, self.inference.group)].units
-        outcomes = []
-
-        for enemy_group in self.enemies:
-            enemy_units = count_group_units(enemy_group)
-            outcome = group_battles(alliance_units, enemy_group.units, enemy_group.name)
-            outcomes.append(outcome)
-        print(outcomes)
-        self.env.set_local_battle_prob(outcomes)
