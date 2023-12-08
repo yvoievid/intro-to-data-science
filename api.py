@@ -26,7 +26,7 @@ flank String No CENTER The path that main group try to use to find optimal way t
 weather Strig No SUMMER Season of the year that is used in simulation. SUMMER or WINTER supported. If WINTER choosen it would be considered as difficult terrain conditions that will make agent to stop at some point if the path is too long, Possible values: SUMMBER, WINTER
 strategy String NO SAFE The way that main unit group will behave in respect to safetiness. If chossen AGGRESSIVE, than agent will almost ignore the enemies. If SAFE then main unit group will try to ommit the enemies and try to find other safer path, Possible values: SAFE, AGGRESSIVE
 
-    
+HELLO WOLRD
 """
 
 app = Flask(__name__)
