@@ -35,7 +35,8 @@ class GameSimulation():
         self.menu_height = 100
         
         # api parameters
-        self.api_url = "http://127.0.0.1:105"
+        self.port = 105
+        self.api_url = "http://127.0.0.1:"+str(self.port)
         self.inference = Inference()
 
         # statistic parameters

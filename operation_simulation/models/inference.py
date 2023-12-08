@@ -3,7 +3,7 @@ from dataclasses import dataclass
 @dataclass
 class Inference: 
     command: str = "ATTACK"
-    flang: str = "CENTER"
+    flank: str = "CENTER"
     group: str = ""
     weather: str = "summer"
     strategy: str = "aggressive"
