@@ -3,11 +3,12 @@ import gymnasium as gym
 import numpy as np
 import pygame
 from operation_simulation.models import Soldier, Locator, Tank, UnitGroup, Inference
+from operation_simulation.constants import Flanks, Strategies, Weather, Commands, GroupNames
 import sys
 import requests
 import time
-from operation_simulation.helpers import set_units, attack_units, count_group_units
-from operation_simulation.models.local_battle import local_battle, simulate_local_battle, group_battles
+from operation_simulation.cross_units_battle.local_battle import  group_battles
+from operation_simulation.helpers.utils import get_index_by_by_name
 
 class GameSimulation():
     def __init__(self):
@@ -49,9 +50,9 @@ class GameSimulation():
         t90 = Tank(name="Bullet 1", size=1)
         abrams = Tank(name="Bullet 2", size=1)
 
-        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name="ALPHA"),
-                    UnitGroup(position=np.array([5, 25]), speed=1, units=[t90, abrams],name="OMEGA"),
-                    UnitGroup(position=np.array([15, 29]), speed=1, units=[t90, abrams],name="DELTA")]
+        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name=GroupNames.ALPHA),
+                    UnitGroup(position=np.array([5, 25]), speed=1, units=[t90, abrams],name=GroupNames.OMEGA),
+                    UnitGroup(position=np.array([15, 29]), speed=1, units=[t90, abrams],name=GroupNames.DELTA)]
 
 
         enemy_locator = Locator(name="Enemy Locator", speed=0, size=1)
@@ -214,7 +215,6 @@ class GameSimulation():
                 # back to initial state
                 if event.key == pygame.K_SPACE:
                     self.q_leaninng_keybord_terminated = True
-                    print(self.inference)
                     self.main_running = True
                     self.reset_train_and_simulate_states()
                     self.env.reset()
@@ -222,7 +222,6 @@ class GameSimulation():
                 # back to initial state
                 if event.key == pygame.K_SPACE:
                     self.q_leaninng_keybord_terminated = True
-                    print(self.inference)
                     self.main_running = True
                     self.reset_train_and_simulate_states()
                     self.env.reset()
@@ -232,9 +231,9 @@ class GameSimulation():
     def get_shared_state(self):
         response = requests.get(self.api_url+"/getInference/").json()
         self.inference = Inference(**response)
-        self.env.set_main_group_intex(self.getIndexByName(self.alliance, self.inference.group))
+        self.env.set_main_group_intex(get_index_by_by_name(self.alliance, self.inference.group))
         self.env.set_weather(self.inference.weather)
-        if self.inference.weather == "winter":
+        if self.inference.weather == Weather.WINTER:
             self.gamma = 0.5
         self.env.set_strategy(self.inference.strategy)    
         
@@ -246,19 +245,13 @@ class GameSimulation():
         self.encoundered_number = 0
         self.make_api_calls_to_get_inference = True
 
-    def getIndexByName(self, li,target): 
-        for index, x in enumerate(li): 
-            if x.name == target: 
-                return index 
-        return -1
 
     def local_battle(self):
-        alliance_units = self.alliance[self.getIndexByName(self.alliance, self.inference.group)].units
+        alliance_units = self.alliance[get_index_by_by_name(self.alliance, self.inference.group)].units
         outcomes = []
 
         for enemy_group in self.enemies:
-            enemy_units = count_group_units(enemy_group)
             outcome = group_battles(alliance_units, enemy_group.units, enemy_group.name)
             outcomes.append(outcome)
-        print(outcomes)
+            
         self.env.set_local_battle_prob(outcomes)

@@ -1,6 +1,7 @@
 from .unit import Unit
 from dataclasses import dataclass
 import numpy as np
+
 @dataclass
 class Soldier(Unit):
     ammo: int = 30

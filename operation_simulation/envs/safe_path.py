@@ -5,14 +5,14 @@ from gymnasium import spaces
 import pygame
 import numpy as np
 import copy
-
+from operation_simulation.constants import Flanks, Strategies, Weather
 
 
 class SafePath(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array", "train"], "render_fps": 5}
 
     def __init__(self, window=None, header=100, background=None, fps=5, render_mode="human", size=5, 
-                 window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather="winter"):
+                 window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather=Weather.WINTER):
         self.grid_size = size
         self.window_size = window_size  
         self.header_size = header
@@ -60,7 +60,7 @@ class SafePath(gym.Env):
         
         if weather == self._weather:
             self._step_cost = -0.1
-        self._strategy = "SAFE"
+        self._strategy = Strategies.SAFE
         
         self._encounters_with_emenies = 0    
         self._was_encounted = False
@@ -140,9 +140,9 @@ class SafePath(gym.Env):
         # Calculate distance 
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
         
-        if self._inference.flank == "LEFT":
+        if self._inference.flank == Flanks.LEFT:
             self._distance_to_flank = abs(self._main_unit_group.position[1] - self._left_flank_position[1])
-        elif self._inference.flank == "RIGHT":
+        elif self._inference.flank == Flanks.RIGHT:
             self._distance_to_flank = abs(self._main_unit_group.position[0] - self._right_flank_position[0])
 
         # Move the main group 
@@ -169,10 +169,10 @@ class SafePath(gym.Env):
         # Inference reward calculation
         flank_reward = 0
         # Flank reward: we are getting more reward if agent following the command of commander and moves towards right flank
-        if self._inference.flank == "LEFT":
+        if self._inference.flank == Flanks.LEFT:
             flank_reward = 1 if abs(self._main_unit_group.position[1] - self._left_flank_position[1]) < self._distance_to_flank else -1
        
-        elif self._inference.flank == "RIGHT":
+        elif self._inference.flank == Flanks.RIGHT:
             flank_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flank_position[0]) < self._distance_to_flank else -1
        
     
@@ -180,32 +180,33 @@ class SafePath(gym.Env):
         terrain_reward = 0
         red, green, blue, alpha = self.canvas.get_at(((self._main_unit_group.position + 0.1) * self.pix_square_size).astype(int))        
         terain_diff = green - red
-        if terain_diff >= 40:
+        
+        # We make the positive reward for going on low ground and the negative for going uphill, 
+        # the reward is a big negative number if we detect an enemy
+        if terain_diff >= LEVEL_0_HIGH_GROUND_SHIFT:
             terrain_reward += 1
     
-        if terain_diff <= -10:
+        if terain_diff <= LEVEL_1_HIGH_GROUND_SHIFT:
             terrain_reward -= 3
         
-        if terain_diff <= -20:
+        if terain_diff <= LEVEL_2_HIGH_GROUND_SHIFT:
             terrain_reward = -4
                 
-        if terain_diff <= -140 and not self._strategy == "AGGRESSIVE":
-            print(red, green, blue, alpha)
+        if terain_diff <= ENEMY_DETECTION_COLOR_SHIFT and not self._strategy == Strategies.AGGRESSIVE:
             terrain_reward -= 10
-            
         
         for enemy in self._enemies:
             if np.linalg.norm(self._main_unit_group.position - enemy.position) < enemy.get_cover_area()/self.pix_square_size:
                 self._was_encounted = True
         
         # Weather reward
-        if self._weather == "winter":
+        if self._weather == Weather.WINTER:
             terrain_reward *= 2
             flank_reward *= 2
             distance_reward *= 0.5
         
         # Behaviour reward
-        if self._strategy == "AGGRESSIVE":
+        if self._strategy == Strategies.AGGRESSIVE:
             distance_reward *= 3
             terrain_reward *= 0.5
         
@@ -238,7 +239,7 @@ class SafePath(gym.Env):
         self.canvas.fill((255, 255, 255))
         self.canvas.blit(self.background, (0,0))
         pygame.font.init()
-        font = pygame.font.SysFont('microsoftjhengheimicrosoftjhengheiuilight', 24)
+        font = pygame.font.SysFont(MICROSOFT_FONT, 24)
         
         # Draw the statistic header
         header_menu = pygame.Surface((self.window_size, self.header_size))
@@ -253,11 +254,9 @@ class SafePath(gym.Env):
             for key, value in item.items():
                 self.draw_title(self.window, font, self.pix_square_size, np.array([10, i]), f"Probability of defeating {key}: {value}")
                 i += 0.5
-            #self.draw_title(self.window, font, self.pix_square_size, np.array([10,2]), f"Probability of defeating {key}: {value}")
-
         
         
-        # First we draw the enemies
+        # Draw the enemies
         for enemy_group in self._enemies:
             pygame.draw.circle(
                 self.canvas,
@@ -379,3 +378,8 @@ class SafePath(gym.Env):
         self.local_battle_prob = outcomes
         
 LABEL_SHIFT = (1,1)
+LEVEL_0_HIGH_GROUND_SHIFT = 40
+LEVEL_1_HIGH_GROUND_SHIFT = -10
+LEVEL_2_HIGH_GROUND_SHIFT = -20
+ENEMY_DETECTION_COLOR_SHIFT = -140
+MICROSOFT_FONT = 'microsoftjhengheimicrosoftjhengheiuilight'

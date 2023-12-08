@@ -1,7 +1,7 @@
 from operation_simulation.models.unit import Unit
 from operation_simulation.models.soldier import Soldier
 from operation_simulation.models.tank import Tank
-from operation_simulation.helpers import set_units, attack_units, count_group_units
+from operation_simulation.cross_units_battle.units import set_units, attack_units, count_group_units
 import numpy as np
 
 def local_battle(alliance, enemies):
@@ -44,7 +44,6 @@ def simulate_local_battle(alliance_powers, enemy_powers, n_simulations):
             wins += 1
             
     prob_winning = wins/n_simulations
-
     return prob_winning
 
 def group_battles(alliance, enemy_group, group_name):
