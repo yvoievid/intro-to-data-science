@@ -29,7 +29,7 @@ http://127.0.0.1:105/command/simulate
 {
     "command":"ATTACK",
     "group": "alfa",
-    "flang": "RIGHT",
+    "flank": "RIGHT",
     "weather": "summer",
     "strategy": "SAFE"
 }
@@ -41,7 +41,7 @@ http://127.0.0.1:105/command/dryrun
 {
     "command":"ATTACK",
     "group": "alfa",
-    "flang": "RIGHT",
+    "flank": "RIGHT",
     "weather": "summer",
     "strategy": "SAFE"
 }

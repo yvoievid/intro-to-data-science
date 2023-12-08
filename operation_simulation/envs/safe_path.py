@@ -66,8 +66,8 @@ class SafePath(gym.Env):
         self._was_encounted = False
         self._total_iterations = 0
         
-        self._left_flang_position = np.array([5, self._target.position[1]])
-        self._right_flang_position = np.array([self._target.position[0], self.grid_size - 5])
+        self._left_flank_position = np.array([5, self._target.position[1]])
+        self._right_flank_position = np.array([self._target.position[0], self.grid_size - 5])
 
         self.metadata["render_fps"] = fps
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -140,10 +140,10 @@ class SafePath(gym.Env):
         # Calculate distance 
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
         
-        if self._inference.flang == "LEFT":
-            self._distance_to_flang = abs(self._main_unit_group.position[1] - self._left_flang_position[1])
-        elif self._inference.flang == "RIGHT":
-            self._distance_to_flang = abs(self._main_unit_group.position[0] - self._right_flang_position[0])
+        if self._inference.flank == "LEFT":
+            self._distance_to_flank = abs(self._main_unit_group.position[1] - self._left_flank_position[1])
+        elif self._inference.flank == "RIGHT":
+            self._distance_to_flank = abs(self._main_unit_group.position[0] - self._right_flank_position[0])
 
         # Move the main group 
         self._main_unit_group.position = np.clip(
@@ -167,13 +167,13 @@ class SafePath(gym.Env):
         
         
         # Inference reward calculation
-        flang_reward = 0
-        # Flang reward: we are getting more reward if agent following the command of commander and moves towards right flang
-        if self._inference.flang == "LEFT":
-            flang_reward = 1 if abs(self._main_unit_group.position[1] - self._left_flang_position[1]) < self._distance_to_flang else -1
+        flank_reward = 0
+        # Flank reward: we are getting more reward if agent following the command of commander and moves towards right flank
+        if self._inference.flank == "LEFT":
+            flank_reward = 1 if abs(self._main_unit_group.position[1] - self._left_flank_position[1]) < self._distance_to_flank else -1
        
-        elif self._inference.flang == "RIGHT":
-            flang_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flang_position[0]) < self._distance_to_flang else -1
+        elif self._inference.flank == "RIGHT":
+            flank_reward = 1 if abs(self._main_unit_group.position[0] - self._right_flank_position[0]) < self._distance_to_flank else -1
        
     
         # Terain reward
@@ -201,7 +201,7 @@ class SafePath(gym.Env):
         # Weather reward
         if self._weather == "winter":
             terrain_reward *= 2
-            flang_reward *= 2
+            flank_reward *= 2
             distance_reward *= 0.5
         
         # Behaviour reward
@@ -211,7 +211,7 @@ class SafePath(gym.Env):
         
         reward += distance_reward
         reward += terrain_reward
-        reward += flang_reward
+        reward += flank_reward
 
         observation = self._get_obs()
         info = self._get_info()
