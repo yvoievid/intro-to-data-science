@@ -44,9 +44,6 @@ def simulate_local_battle(alliance_powers, enemy_powers, n_simulations):
             wins += 1
             
     prob_winning = wins/n_simulations
-            
-    #print('Number of alliance wins: ', wins)
-    #print(f'Fraction of alliance winning the battle: ', prob_winning)
 
     return prob_winning
 
@@ -57,11 +54,6 @@ def group_battles(alliance, enemy_group, group_name):
     p = simulate_local_battle(alliance_powers = alliance, enemy_powers=enemies, n_simulations=100)
     print("ENEMY GROUP: ", enemy_group) 
     return {f"{group_name}": p}
-
-    # for enemy_group in groups:
-    #     enemy_units = count_group_units(enemy_group)
-    #     p = simulate_local_battle(alliance_powers = alliance, enemy_powers=enemy_group, n_simulations=100)
-    # return {f"{group.name}": p}
 
 
 if __name__ == "__main__":
