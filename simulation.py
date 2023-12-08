@@ -194,8 +194,7 @@ class GameSimulation():
             if (self.inference.simulate): 
                 self.train()    
                 self.gather_statistics()
-                #  simulate local battles 
-                
+                self.local_battle()
                 self.dryrun()           
                 
             if (self.inference.dryrun): 
@@ -252,3 +251,14 @@ class GameSimulation():
             if x.name == target: 
                 return index 
         return -1
+
+    def local_battle(self):
+        alliance_units = self.alliance[self.getIndexByName(self.alliance, self.inference.group)].units
+        outcomes = []
+
+        for enemy_group in self.enemies:
+            enemy_units = count_group_units(enemy_group)
+            outcome = group_battles(alliance_units, enemy_group.units, enemy_group.name)
+            outcomes.append(outcome)
+        print(outcomes)
+        self.env.set_local_battle_prob(outcomes)
