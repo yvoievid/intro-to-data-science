@@ -1,7 +1,7 @@
 from operation_simulation.models.unit import Unit
 from operation_simulation.models.soldier import Soldier
 from operation_simulation.models.tank import Tank
-from operation_simulation.cross_units_battle.units import set_units, attack_units, count_group_units
+from operation_simulation.helpers.units import set_units, attack_units, count_group_units
 import numpy as np
 
 def local_battle(alliance, enemies):
@@ -48,14 +48,6 @@ def simulate_local_battle(alliance_powers, enemy_powers, n_simulations):
 
 def group_battles(alliance, enemy_group, group_name):
     alliance, enemies = count_group_units(alliance), count_group_units(enemy_group)
-    print("ALLIANCE: ", alliance)
-    print("ENEMY: ", enemies)
     p = simulate_local_battle(alliance_powers = alliance, enemy_powers=enemies, n_simulations=100)
-    print("ENEMY GROUP: ", enemy_group) 
     return {f"{group_name}": p}
 
-
-if __name__ == "__main__":
-    alliance_powers = {'soliders': 10, 'tanks': 5}
-    enemy_powers = {'soliders': 10, 'tanks': 5}
-    simulate_local_battle(alliance_powers, enemy_powers, 100)

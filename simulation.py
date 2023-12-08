@@ -7,7 +7,7 @@ from operation_simulation.constants import Flanks, Strategies, Weather, Commands
 import sys
 import requests
 import time
-from operation_simulation.cross_units_battle.local_battle import  group_battles
+from operation_simulation.cross_units_battle.local_battle import group_battles
 from operation_simulation.helpers.utils import get_index_by_by_name
 
 class GameSimulation():
