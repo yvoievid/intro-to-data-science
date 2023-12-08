@@ -8,9 +8,11 @@ Done by team members:
 **Implemented by Artur Shevtsov**: 
 - A Monte-Carlo simulation algorithm that returns a probability of alliance unit group defeating an enemy group. The logic is located in the following files: 
     - Classes architecture, main attributes and methods are located in: 
-   `/operation_simulation/models`: `unit.py`, `soldier.py`, `tank.py`
-he    - Helper functions for working with various data formats: everything in `/operation_simulation/helpers` directory
-    - Main logic of the Monte-Carlo simulation algo: `/operation_simulation/cross_units_battle/local_battle`
+   `operation_simulation/models`: `unit.py`, `soldier.py`, `tank.py`
+he   
+    - Helper functions for working with various data formats: everything in `/operation_simulation/helpers` directory
+    - Main logic of the Monte-Carlo simulation algo: `operation_simulation/cross_units_battle/local_battle`
+    - Displaying simulation outcomes in PyGame visualization window: `operation_simulation/envs/safe_path.py`
 
 **Implemented by Yurii Voievidka**:
 
