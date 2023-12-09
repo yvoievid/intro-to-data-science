@@ -243,7 +243,7 @@ class SafePath(gym.Env):
         self.canvas.fill((255, 255, 255))
         self.canvas.blit(self.background, (0,0))
         pygame.font.init()
-        font = pygame.font.SysFont(MICROSOFT_FONT, 24)
+        font = pygame.font.SysFont(MICROSOFT_FONT, 16)
         
         # Draw the statistic header
         header_menu = pygame.Surface((self.window_size, self.header_size))

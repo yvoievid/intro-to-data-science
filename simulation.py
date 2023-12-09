@@ -37,7 +37,7 @@ class GameSimulation():
         
         
         # window settings
-        self.window_size = 1024
+        self.window_size = 718
         self.menu_height = 100
         
         # api parameters
@@ -80,9 +80,10 @@ class GameSimulation():
 
 
         # creating interface
-        window = pygame.display.set_mode((self.window_size, self.menu_height + self.window_size))
+        window = pygame.display.set_mode((self.window_size, self.menu_height + self.window_size), pygame.RESIZABLE)
         terrain_background = pygame.image.load(self.backgrounds[0])
-        
+        pygame.display.set_caption("Reinforcement Learning Simulation")
+
         # create gym env
         self.env = gym.make('operation_simulation/SafePath-v0',
                     window=window, 
@@ -223,6 +224,7 @@ class GameSimulation():
 
             if (self.inference.switch_terrain): 
                 self.swtich_terrain()
+                
                 
     # Function to get shared state from Flask API
     def get_shared_state(self):
