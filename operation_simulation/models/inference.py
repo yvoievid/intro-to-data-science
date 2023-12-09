@@ -11,3 +11,5 @@ class Inference:
     train: bool = False
     simulate: bool = False
     dryrun: bool = False
+    reset: bool = False
+    switch_terrain: bool = False

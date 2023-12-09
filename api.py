@@ -1,6 +1,6 @@
 from flask import Flask, jsonify, request
 from operation_simulation.models.inference import Inference
-from operation_simulation.helpers.utils import api_response,get_query_params_for_inference
+from operation_simulation.helpers.utils import api_response, get_query_params_for_inference, reset_response
 import copy
 
 
@@ -19,6 +19,9 @@ strategy String NO SAFE The way that main unit group will behave in respect to s
 
 The endpoint /command/smoke accepts command, a flank to choose, a group name, the weather year period, and strategy. This endpoint doesn't run the simmulation, it just returns the expected output of /command endpoint
 
+The endpoint /command/reset resets the state of the simulation and brings back all the units to its' initial positions
+
+The endpoint /command/switch-terrain changes the background to the alternative as it is from satilite or compressed in sake of simulation
 """
 
 app = Flask(__name__)
@@ -27,8 +30,7 @@ inference = Inference(**{
                 'command':"ATTACK",
                 'flank': "CENTER",
                 'simulate': False,
-                'train': False,
-                'dryrun': False})
+                'reset': False})
 
 
 @app.route('/getInference/', methods=['GET'])
@@ -38,6 +40,9 @@ def welcome():
     inference.train = False
     inference.simulate = False
     inference.dryrun = False
+    inference.reset = False
+    inference.switch_terrain = False
+    
     return jsonify(original_indefence)
 
 
@@ -61,6 +66,12 @@ def smoke():
     global inference
     inference = get_query_params_for_inference(request.args)    
     return api_response(inference)
+
+@app.route('/command/reset', methods=['GET', 'POST'])
+def reset():
+    global inference
+    inference.reset = True
+    return reset_response()
 
 
 if __name__ == '__main__':

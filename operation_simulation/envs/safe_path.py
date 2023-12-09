@@ -12,11 +12,12 @@ class SafePath(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array", "train"], "render_fps": 5}
 
     def __init__(self, window=None, header=100, background=None, fps=5, render_mode="human", size=5, 
-                 window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather=Weather.WINTER):
+                 window_size=512, allies=None, enemies=None, target=None, main_unit_group_index=0, weather=Weather.WINTER, all_backgrounds=None):
         self.grid_size = size
         self.window_size = window_size  
         self.header_size = header
         self.background = pygame.transform.scale(background, (window_size, window_size))
+        self.all_backgrounds = all_backgrounds
 
         self._allies = allies 
         self._enemies = enemies
@@ -25,7 +26,7 @@ class SafePath(gym.Env):
         self._n_enemies = len(enemies)
         
         self._main_unit_group_index = main_unit_group_index
-        self._main_unit_group_initial_position = self._allies[main_unit_group_index].position
+        self._main_unit_group_initial_position = copy.deepcopy(self._allies[main_unit_group_index].position)
         self._enemies_inital_positions = {enemy.name: enemy.position for enemy in self._enemies}
         
         self._main_unit_group = self._allies[main_unit_group_index]
@@ -108,12 +109,13 @@ class SafePath(gym.Env):
                 "encountered": self._was_encounted
         }
 
-    def reset(self, seed=None, main_unit_index=0, options=None):
+    def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
         
-        self._main_unit_group.position = self._main_unit_group_initial_position
-        # self._encounters_with_emenies = 0
+        # self._main_unit_group = self._allies[self._main_unit_group_index]
+        print("self._main_unit_group_initial_position",self._main_unit_group_initial_position)
+        self._main_unit_group.position = copy.deepcopy(self._main_unit_group_initial_position)
         self._was_encounted = False
         
         for enemy in self._enemies:
@@ -123,6 +125,8 @@ class SafePath(gym.Env):
         
         # Calculate how far we are from our target
         self._distance_to_target_start = np.linalg.norm(self._main_unit_group.position - self._target.position, ord=1)
+        # self.local_battle_prob = []
+        # self._encounters_with_emenies = 0
         
         # Calculatte
         observation = self._get_obs()
@@ -377,6 +381,15 @@ class SafePath(gym.Env):
     def set_local_battle_prob(self, outcomes):
         self.local_battle_prob = outcomes
         
+    def set_encounter(self, encounter):
+        self._encounters_with_emenies = encounter
+        
+    def switch_background(self):
+        terrain_background = pygame.image.load(self.all_backgrounds[0])
+        self.background = pygame.transform.scale(terrain_background, (self.window_size, self.window_size))
+        self.canvas.blit(self.background, (0,0))
+        
+
 LABEL_SHIFT = (1,1)
 LEVEL_0_HIGH_GROUND_SHIFT = 40
 LEVEL_1_HIGH_GROUND_SHIFT = -10
