@@ -243,7 +243,7 @@ class SafePath(gym.Env):
         self.canvas.fill((255, 255, 255))
         self.canvas.blit(self.background, (0,0))
         pygame.font.init()
-        font = pygame.font.SysFont(MICROSOFT_FONT, 16)
+        font = pygame.font.SysFont(MICROSOFT_FONT, 18)
         
         # Draw the statistic header
         header_menu = pygame.Surface((self.window_size, self.header_size))
@@ -276,7 +276,7 @@ class SafePath(gym.Env):
                  self.pix_square_size / 3,
             )
             self.draw_title(self.canvas, font,  self.pix_square_size, enemy_group.position, enemy_group.name)
-            for unit in enemy_group.units:
+            for i, unit in enumerate(enemy_group.units):
                 self.draw_title(self.canvas, font,  self.pix_square_size, enemy_group.position + [0, (i+1)*1], unit.name)
 
             
