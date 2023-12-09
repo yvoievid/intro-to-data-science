@@ -52,12 +52,14 @@ class GameSimulation():
         
     def setup_actors(self):
         # actors
-        t90 = Tank(name="Bullet 1", size=1)
-        abrams = Tank(name="Bullet 2", size=1)
+        t84 = Tank(name="T-84", size=1)
+        bmp1 = Tank(name="BMP-1", size=1)
+        bradley = Tank(name="Bradley", size=1)
 
-        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t90, abrams],name="ALPHA"),
-                    UnitGroup(position=np.array([5, 25]), speed=1, units=[t90, abrams],name="GAMMA"),
-                    UnitGroup(position=np.array([15, 29]), speed=1, units=[t90, abrams],name="DELTA")]
+
+        self.alliance = [UnitGroup(position=np.array([2, 20]), speed=1, units=[t84, bmp1],name="ALPHA"),
+                    UnitGroup(position=np.array([5, 25]), speed=1, units=[t84, bradley],name="GAMMA"),
+                    UnitGroup(position=np.array([15, 29]), speed=3, units=[bradley, bradley],name="DELTA")]
 
 
         enemy_locator = Locator(name="Enemy Locator", speed=0, size=1)
