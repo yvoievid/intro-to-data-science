@@ -276,7 +276,9 @@ class SafePath(gym.Env):
                  self.pix_square_size / 3,
             )
             self.draw_title(self.canvas, font,  self.pix_square_size, enemy_group.position, enemy_group.name)
-          
+            for unit in enemy_group.units:
+                self.draw_title(self.canvas, font,  self.pix_square_size, enemy_group.position + [0, (i+1)*1], unit.name)
+
             
         for ally in self._allies:
             pygame.draw.circle(
@@ -287,6 +289,10 @@ class SafePath(gym.Env):
             )
         
             self.draw_title(self.canvas, font,  self.pix_square_size, ally.position, ally.name)
+            
+            for i, unit in enumerate(ally.units):
+                self.draw_title(self.canvas, font,  self.pix_square_size, ally.position + [0, (i+1)*1], unit.name)
+
 
         # draw target
         pygame.draw.rect(
