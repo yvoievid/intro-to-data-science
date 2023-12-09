@@ -2,6 +2,6 @@ from enum import Enum
 
 class GroupNames(str, Enum):
     ALPHA = "ALPHA"
-    OMEGA = "OMEGA"
+    GAMMA = "GAMMA"
     DELTA = "DELTA"
     

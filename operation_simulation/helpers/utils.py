@@ -5,6 +5,9 @@ def api_response(inference):
     return f"""Successfully started simmulation with group {inference.group.upper()} that make {inference.command.upper()}
         through {inference.flank.upper()} flank considering that it is {inference.weather.upper()} 
         year period and using {inference.strategy.upper()} strategy"""
+        
+def reset_response():
+    return "Reset made"
 
 def get_query_params_for_inference(query_params):
     inference = Inference(command=query_params.get("command", default="ATTACK").upper(), 
